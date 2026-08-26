@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* High Contrast Mode */
+  html.high-contrast {
+    filter: contrast(140%);
+  }
+
+  html.high-contrast body {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+  }
+
+  html.high-contrast .bg-white {
+    background-color: #121212 !important;
+    color: #ffffff !important;
+    border-color: #facc15 !important;
+  }
+
+  html.high-contrast .bg-slate-50, 
+  html.high-contrast .bg-slate-100, 
+  html.high-contrast .bg-gray-50 {
+    background-color: #1a1a1a !important;
+    color: #ffffff !important;
+  }
+
+  html.high-contrast .text-slate-600,
+  html.high-contrast .text-slate-500,
+  html.high-contrast .text-gray-600 {
+    color: #e2e8f0 !important;
+  }
+
+  html.high-contrast button {
+    border: 2px solid #facc15 !important;
+  }
+
+  /* Focus styling for keyboard accessibility */
+  *:focus-visible {
+    outline: 3px solid #0284c7;
+    outline-offset: 2px;
+  }
+
+  /* Text scaling */
+  html.text-size-sm { font-size: 14px; }
+  html.text-size-base { font-size: 16px; }
+  html.text-size-lg { font-size: 18px; }
+  html.text-size-xl { font-size: 20px; }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Map popup styling */
+.leaflet-popup-content-wrapper {
+  border-radius: 1rem;
+  padding: 0.25rem;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+.leaflet-popup-content {
+  margin: 0.75rem;
+  line-height: 1.5;
+}
