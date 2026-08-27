@@ -20,7 +20,8 @@ import {
   Layers,
   Heart,
   Share2,
-  Calendar
+  Calendar,
+  MapPinCheck
 } from 'lucide-react';
 import { speakText } from '../../services/translationService';
 
@@ -148,11 +149,11 @@ export default function DestinationDetailView() {
             </button>
 
             <button
-              onClick={() => navigateTo('hotels')}
+              onClick={() => navigateTo('places')}
               className="py-3 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5 transition-colors"
             >
-              <Hotel className="w-4 h-4" />
-              <span>Find Accessible Stay</span>
+              <MapPinCheck className="w-4 h-4" />
+              <span>Verify Entrances & Points</span>
             </button>
 
             <button

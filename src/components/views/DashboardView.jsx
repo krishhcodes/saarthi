@@ -18,7 +18,8 @@ import {
   Heart,
   ChevronRight,
   TrendingUp,
-  MessageSquare
+  MessageSquare,
+  MapPinCheck
 } from 'lucide-react';
 
 export default function DashboardView() {
@@ -50,13 +51,13 @@ export default function DashboardView() {
   });
 
   const quickActions = [
-    { label: "Plan Trip", icon: Calendar, view: 'trip-planner', color: "bg-blue-600 text-white" },
-    { label: "Step-Free Route", icon: Navigation, view: 'route-planner', color: "bg-emerald-600 text-white" },
-    { label: "Find Stays", icon: Hotel, view: 'hotels', color: "bg-indigo-600 text-white" },
+    { label: "Route Navigator", icon: Navigation, view: 'route-planner', color: "bg-emerald-600 text-white" },
+    { label: "Places Check", icon: MapPinCheck, view: 'places', color: "bg-indigo-600 text-white" },
+    { label: "Attractions", icon: MapPin, view: 'destinations', color: "bg-blue-600 text-white" },
     { label: "Book Guide", icon: Users, view: 'guides', color: "bg-purple-600 text-white" },
-    { label: "Gov Schemes", icon: Building2, view: 'gov-services', color: "bg-amber-600 text-white" },
-    { label: "Community Map", icon: Map, view: 'community-map', color: "bg-teal-600 text-white" },
     { label: "AI Vision Scan", icon: Sparkles, view: 'ai-verify', color: "bg-rose-600 text-white" },
+    { label: "Community Map", icon: Map, view: 'community-map', color: "bg-teal-600 text-white" },
+    { label: "Gov Schemes", icon: Building2, view: 'gov-services', color: "bg-amber-600 text-white" },
     { label: "Journey Score", icon: Gauge, view: 'journey-score', color: "bg-slate-900 text-white" }
   ];
 

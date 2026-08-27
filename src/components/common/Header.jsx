@@ -67,21 +67,19 @@ export default function Header() {
   const userRole = currentUser?.role || 'tourist';
   const isVerifiedGuide = userRole === 'guide' && guideApplicationStatus === 'verified';
 
-  // ── Tourist Navigation ──────────────────────────────────────────────────
+  // ── Tourist Navigation (Laser-focused on PS 49) ─────────────────────────
   const touristPrimaryNav = [
     { id: 'dashboard', label: 'Dashboard', icon: Compass },
-    { id: 'destinations', label: 'Destinations', icon: MapPin },
-    { id: 'places', label: 'Places', icon: MapPinCheck },
-    { id: 'hotels', label: 'Stays', icon: Hotel },
+    { id: 'destinations', label: 'Attractions', icon: MapPin },
+    { id: 'route-planner', label: 'Route Navigator', icon: Navigation },
+    { id: 'places', label: 'Places Check', icon: MapPinCheck },
     { id: 'guides', label: 'Guides', icon: Users }
   ];
   const touristSecondaryNav = [
-    { id: 'route-planner', label: 'Step-Free Routes', icon: Navigation, desc: 'Plan accessible step-free journeys' },
-    { id: 'gov-services', label: 'Gov Schemes & UDID', icon: Building2, desc: 'Sugamya Bharat, IRCTC concessions' },
     { id: 'community-map', label: 'Community Map', icon: Map, desc: 'Crowdsourced obstacle & ramp reports' },
     { id: 'ai-verify', label: 'AI Vision Scanner', icon: Sparkles, desc: 'Gemini visual ramp verification' },
+    { id: 'gov-services', label: 'Gov Schemes & UDID', icon: Building2, desc: 'Sugamya Bharat, IRCTC concessions' },
     { id: 'journey-score', label: 'Journey Score', icon: Gauge, desc: '5-tier trip accessibility metric' },
-    { id: 'store', label: 'Travel Store', icon: ShoppingBag, desc: 'Portable ramps & assistive gear', badge: cart.length },
     { id: 'trip-planner', label: 'Trip Planner', icon: Calendar, desc: 'Build and score accessible itinerary' }
   ];
 

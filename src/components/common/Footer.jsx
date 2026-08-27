@@ -43,8 +43,8 @@ export default function Footer() {
                 </button>
               </li>
               <li>
-                <button onClick={() => navigateTo('hotels')} className="hover:text-saarthi-400 transition-colors">
-                  Accessible Stays & Suites
+                <button onClick={() => navigateTo('places')} className="hover:text-saarthi-400 transition-colors">
+                  Monument & Places Check
                 </button>
               </li>
               <li>

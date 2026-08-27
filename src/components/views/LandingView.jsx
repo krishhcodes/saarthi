@@ -17,7 +17,8 @@ import {
   Award,
   ChevronRight,
   Eye,
-  Activity
+  Activity,
+  MapPinCheck
 } from 'lucide-react';
 
 export default function LandingView() {
@@ -32,10 +33,10 @@ export default function LandingView() {
       color: "bg-blue-50 text-blue-700 border-blue-200"
     },
     {
-      icon: Hotel,
-      title: "Verified Accessible Stays",
-      desc: "Detailed roll-in shower measurements, wide doorways (>90cm), bed heights, and sensory visual smoke alarms.",
-      tag: "100% Inspected Stays",
+      icon: MapPinCheck,
+      title: "Granular Infrastructure Mapping",
+      desc: "Detailed mapping of step-free entrances, roll-in accessible toilets, battery cart shuttles, tactile pathways, and sensory services.",
+      tag: "Entrances • Toilets • Paths",
       color: "bg-emerald-50 text-emerald-700 border-emerald-200"
     },
     {
