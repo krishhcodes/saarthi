@@ -35,24 +35,28 @@ export default function AiVerificationView() {
     }
   };
 
-  const handleCustomUpload = async (e) => {
+  const handleCustomUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setCustomImageUrl(url);
-      setSelectedImage({
-        id: "custom",
-        name: file.name,
-        url: url,
-        label: "User Uploaded Image"
-      });
-      setIsScanning(true);
-      try {
-        const res = await analyzeAccessibilityPhoto(url);
-        setAnalysisResult(res);
-      } finally {
-        setIsScanning(false);
-      }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64Data = reader.result;
+        setCustomImageUrl(base64Data);
+        setSelectedImage({
+          id: "custom",
+          name: file.name,
+          url: base64Data,
+          label: "User Uploaded Image"
+        });
+        setIsScanning(true);
+        try {
+          const res = await analyzeAccessibilityPhoto(base64Data);
+          setAnalysisResult(res);
+        } finally {
+          setIsScanning(false);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
