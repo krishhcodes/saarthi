@@ -105,22 +105,30 @@ export default function LandingView() {
               </p>
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap gap-4 pt-2">
+              <div className="flex flex-wrap gap-3 pt-2">
                 <button
                   onClick={() => navigateTo('profile-setup')}
-                  className="px-6 py-3.5 rounded-xl bg-saarthi-600 hover:bg-saarthi-700 text-white font-bold text-base shadow-lg shadow-saarthi-500/25 flex items-center gap-2 transition-all transform active:scale-95"
+                  className="px-5 py-3 rounded-xl bg-saarthi-600 hover:bg-saarthi-700 text-white font-bold text-sm shadow-lg shadow-saarthi-500/25 flex items-center gap-2 transition-all transform active:scale-95"
                 >
-                  <Navigation className="w-5 h-5" />
+                  <Navigation className="w-4 h-4" />
                   <span>Plan My Accessible Trip</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </button>
 
                 <button
                   onClick={() => navigateTo('destinations')}
-                  className="px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-base border border-slate-300 shadow-sm flex items-center gap-2 transition-colors"
+                  className="px-5 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm border border-slate-300 shadow-sm flex items-center gap-2 transition-colors"
                 >
-                  <MapPin className="w-5 h-5 text-saarthi-600" />
+                  <MapPin className="w-4 h-4 text-saarthi-600" />
                   <span>Explore Destinations</span>
+                </button>
+
+                <button
+                  onClick={() => navigateTo('auth')}
+                  className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-sm flex items-center gap-2 transition-colors"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Sign In / Create Account</span>
                 </button>
               </div>
 

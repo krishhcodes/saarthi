@@ -10,6 +10,21 @@ import {
   MOCK_ROUTES
 } from '../data/seedData';
 import { speakText, UI_TRANSLATIONS } from '../services/translationService';
+import { 
+  auth, 
+  db, 
+  onAuthStateChanged, 
+  firebaseSignOut, 
+  collection, 
+  getDocs, 
+  setDoc, 
+  addDoc, 
+  doc, 
+  updateDoc, 
+  getDoc,
+  isFirebaseConfigured 
+} from '../config/firebase';
+import { seedFirestoreIfEmpty } from '../services/seedService';
 
 const AppContext = createContext();
 
@@ -17,6 +32,7 @@ export function AppProvider({ children }) {
   // Authentication & Active Persona
   const [currentUser, setCurrentUser] = useState(DEMO_PERSONAS.tourist_wheelchair);
   const [userProfile, setUserProfile] = useState(DEMO_PERSONAS.tourist_wheelchair.accessibilityProfile);
+  const [isLiveAuth, setIsLiveAuth] = useState(false);
   
   // Navigation
   const [currentView, setCurrentView] = useState('landing');
@@ -44,6 +60,7 @@ export function AppProvider({ children }) {
   const [communityReports, setCommunityReports] = useState(INITIAL_REPORTS);
   const [govServices, setGovServices] = useState(INITIAL_GOV_SERVICES);
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [isDbLoaded, setIsDbLoaded] = useState(false);
 
   // Active Trip Planner State
   const [currentTrip, setCurrentTrip] = useState({
@@ -91,6 +108,108 @@ export function AppProvider({ children }) {
     { ...INITIAL_PRODUCTS[0], quantity: 1 } // Foldable Travel Ramp
   ]);
 
+  // Toast Helper
+  const addToast = (message, type = 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    if (screenReaderVoice) {
+      speakText(message, activeLanguage === 'hi' ? 'hi-IN' : 'en-IN');
+    }
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  };
+
+  // 1. Firebase Auth Listener
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setIsLiveAuth(true);
+        try {
+          const profileDoc = await getDoc(doc(db, 'userProfiles', user.uid));
+          if (profileDoc.exists()) {
+            const data = profileDoc.data();
+            setCurrentUser(data);
+            if (data.accessibilityProfile) {
+              setUserProfile(data.accessibilityProfile);
+            }
+          } else {
+            const newUserData = {
+              id: user.uid,
+              name: user.displayName || user.email?.split('@')[0] || "Traveler",
+              email: user.email,
+              role: 'tourist',
+              avatar: user.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+              udidNumber: "DL042026889912",
+              accessibilityProfile: DEMO_PERSONAS.tourist_wheelchair.accessibilityProfile
+            };
+            setCurrentUser(newUserData);
+            setUserProfile(newUserData.accessibilityProfile);
+          }
+        } catch (e) {
+          console.warn('[Auth Profile Fetch]', e);
+        }
+      } else {
+        setIsLiveAuth(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Load Firestore Cloud Database & Seed if empty
+  useEffect(() => {
+    async function loadCloudDatabase() {
+      if (!isFirebaseConfigured()) return;
+
+      try {
+        // Auto-seed if empty
+        await seedFirestoreIfEmpty();
+
+        // Fetch Destinations
+        const destSnap = await getDocs(collection(db, 'destinations'));
+        if (!destSnap.empty) {
+          const destList = destSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setDestinations(destList);
+          setSelectedDestination(destList[0]);
+        }
+
+        // Fetch Hotels
+        const hotelsSnap = await getDocs(collection(db, 'hotels'));
+        if (!hotelsSnap.empty) {
+          setHotels(hotelsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }
+
+        // Fetch Guides
+        const guidesSnap = await getDocs(collection(db, 'guides'));
+        if (!guidesSnap.empty) {
+          setGuides(guidesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }
+
+        // Fetch Community Reports
+        const reportsSnap = await getDocs(collection(db, 'communityReports'));
+        if (!reportsSnap.empty) {
+          setCommunityReports(reportsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }
+
+        // Fetch Bookings
+        const bookingsSnap = await getDocs(collection(db, 'bookings'));
+        if (!bookingsSnap.empty) {
+          setBookings(bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }
+
+        setIsDbLoaded(true);
+        console.log('[Firestore] Successfully synced cloud collections.');
+      } catch (err) {
+        console.warn('[Firestore Sync Fallback] Using local seed data:', err.message);
+      }
+    }
+
+    loadCloudDatabase();
+  }, []);
+
   // Handle High Contrast & Text Size classes on <html>
   useEffect(() => {
     const root = document.documentElement;
@@ -110,16 +229,20 @@ export function AppProvider({ children }) {
     }
   }, [highContrast, textSize, dyslexicFont]);
 
-  // Toast Helper
-  const addToast = (message, type = 'info') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    if (screenReaderVoice) {
-      speakText(message, activeLanguage === 'hi' ? 'hi-IN' : 'en-IN');
+  // Sign out
+  const signOutUser = async () => {
+    try {
+      if (isFirebaseConfigured()) {
+        await firebaseSignOut(auth);
+      }
+      setIsLiveAuth(false);
+      setCurrentUser(DEMO_PERSONAS.tourist_wheelchair);
+      setUserProfile(DEMO_PERSONAS.tourist_wheelchair.accessibilityProfile);
+      addToast("Signed out successfully. Switched to demo mode.", "info");
+      navigateTo('landing');
+    } catch (e) {
+      console.error('Sign out error:', e);
     }
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
   };
 
   // Switch Active Demo Persona
@@ -174,8 +297,8 @@ export function AppProvider({ children }) {
     }
   };
 
-  // Community Map: Add new report
-  const addCommunityReport = (report) => {
+  // Community Map: Add new report with Firestore sync
+  const addCommunityReport = async (report) => {
     const newReport = {
       id: `rep-${Date.now()}`,
       ...report,
@@ -184,40 +307,82 @@ export function AppProvider({ children }) {
       disputeCount: 0,
       status: "Community Verified"
     };
+
     setCommunityReports(prev => [newReport, ...prev]);
-    addToast("Accessibility report submitted successfully to the community map!", "success");
+
+    if (isFirebaseConfigured()) {
+      try {
+        await setDoc(doc(db, 'communityReports', newReport.id), newReport);
+      } catch (err) {
+        console.warn('[Firestore] Error saving community report:', err);
+      }
+    }
+
+    addToast("Accessibility report saved to Cloud Firestore and community map!", "success");
   };
 
   // Community Map: Confirm / Dispute report
-  const voteReport = (reportId, voteType) => {
+  const voteReport = async (reportId, voteType) => {
+    let updatedReport = null;
     setCommunityReports(prev => prev.map(rep => {
       if (rep.id === reportId) {
-        if (voteType === 'confirm') {
-          return { ...rep, confirmCount: rep.confirmCount + 1 };
-        } else if (voteType === 'dispute') {
-          return { ...rep, disputeCount: rep.disputeCount + 1 };
-        }
+        const item = {
+          ...rep,
+          confirmCount: voteType === 'confirm' ? rep.confirmCount + 1 : rep.confirmCount,
+          disputeCount: voteType === 'dispute' ? rep.disputeCount + 1 : rep.disputeCount
+        };
+        updatedReport = item;
+        return item;
       }
       return rep;
     }));
+
+    if (isFirebaseConfigured() && updatedReport) {
+      try {
+        await setDoc(doc(db, 'communityReports', reportId), updatedReport, { merge: true });
+      } catch (err) {
+        console.warn('[Firestore] Error updating vote:', err);
+      }
+    }
+
     addToast(`Thank you! Your ${voteType} vote helps keep map data accurate.`, "success");
   };
 
-  // Guide Booking: Create new request
-  const createBooking = (bookingData) => {
+  // Guide Booking: Create new request with Firestore sync
+  const createBooking = async (bookingData) => {
     const newBooking = {
       id: `book-${Date.now()}`,
       ...bookingData,
+      createdAt: new Date().toISOString(),
       status: "Pending Guide Confirmation"
     };
+
     setBookings(prev => [newBooking, ...prev]);
-    addToast("Guide booking request submitted! Guide will review shortly.", "success");
+
+    if (isFirebaseConfigured()) {
+      try {
+        await setDoc(doc(db, 'bookings', newBooking.id), newBooking);
+      } catch (err) {
+        console.warn('[Firestore] Error saving booking:', err);
+      }
+    }
+
+    addToast("Guide booking request submitted! Saved to Cloud Database.", "success");
   };
 
   // Guide Booking: Accept / Reject (for guide dashboard)
-  const updateBookingStatus = (bookingId, status) => {
+  const updateBookingStatus = async (bookingId, status) => {
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status } : b));
-    addToast(`Booking #${bookingId} has been marked as ${status}.`, "success");
+
+    if (isFirebaseConfigured()) {
+      try {
+        await updateDoc(doc(db, 'bookings', bookingId), { status });
+      } catch (err) {
+        console.warn('[Firestore] Error updating booking:', err);
+      }
+    }
+
+    addToast(`Booking #${bookingId} marked as ${status}.`, "success");
   };
 
   // Store: Cart actions
@@ -285,6 +450,8 @@ export function AppProvider({ children }) {
       setCurrentUser,
       userProfile,
       setUserProfile,
+      isLiveAuth,
+      signOutUser,
       currentView,
       navigateTo,
       selectedDestination,
@@ -336,7 +503,8 @@ export function AppProvider({ children }) {
       isVoiceModalOpen,
       setIsVoiceModalOpen,
       isSosModalOpen,
-      setIsSosModalOpen
+      setIsSosModalOpen,
+      isDbLoaded
     }}>
       {children}
     </AppContext.Provider>

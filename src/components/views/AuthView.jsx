@@ -8,11 +8,22 @@ import {
   ShieldCheck, 
   Sparkles, 
   ArrowRight, 
-  CheckCircle2,
   Users,
-  Building
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
-import { DEMO_PERSONAS } from '../../data/seedData';
+import { 
+  auth, 
+  db, 
+  doc, 
+  setDoc, 
+  googleProvider, 
+  signInWithPopup, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  updateProfile,
+  isFirebaseConfigured 
+} from '../../config/firebase';
 
 export default function AuthView() {
   const { navigateTo, setCurrentUser, setUserProfile, addToast, switchPersona } = useApp();
@@ -22,18 +33,114 @@ export default function AuthView() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [udidNumber, setUdidNumber] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (authMode === 'signup') {
-      const newUser = {
-        id: `user-${Date.now()}`,
-        name: name || "Demo Traveler",
-        email: email || "traveler@saarthi.org",
+  // Handle Firebase Google Sign-In
+  const handleGoogleSignIn = async () => {
+    setErrorMsg('');
+    if (!isFirebaseConfigured()) {
+      addToast("Demo Mode: Switched to Google Demo Traveler profile", "info");
+      switchPersona('tourist_wheelchair');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      const accessibilityProfile = {
+        primaryDisability: "Mobility / Wheelchair",
+        secondaryNeeds: ["Step-Free Access", "Accessible Washroom"],
+        preferredLanguage: "English",
+        maxWalkingDistance: "Under 200m",
+        preferredTransport: "Accessible Cab",
+        accommodationRequirements: ["Roll-in Shower"],
+        needForGuide: true
+      };
+
+      const userDoc = {
+        id: user.uid,
+        name: user.displayName || "Divyangjan Traveler",
+        email: user.email,
         role: selectedRole,
-        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+        avatar: user.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
         udidNumber: udidNumber || "DL042026889912",
-        accessibilityProfile: {
+        accessibilityProfile,
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        await setDoc(doc(db, 'userProfiles', user.uid), userDoc, { merge: true });
+      } catch (dbErr) {
+        console.warn('[Firestore] Profile write warning:', dbErr);
+      }
+
+      setCurrentUser(userDoc);
+      setUserProfile(accessibilityProfile);
+      addToast(`Welcome ${user.displayName || 'Traveler'}! Signed in with Google.`, 'success');
+      
+      if (selectedRole === 'admin') navigateTo('admin-dashboard');
+      else if (selectedRole === 'guide') navigateTo('guide-dashboard');
+      else navigateTo('dashboard');
+    } catch (err) {
+      console.error('Google Sign-In Error:', err);
+      setErrorMsg(err.message || 'Google sign-in failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Firebase Email/Password Sign-In or Sign-Up
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    if (!isFirebaseConfigured()) {
+      // Fallback demo mode
+      if (authMode === 'signup') {
+        const newUser = {
+          id: `user-${Date.now()}`,
+          name: name || "Demo Traveler",
+          email: email || "traveler@saarthi.org",
+          role: selectedRole,
+          avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+          udidNumber: udidNumber || "DL042026889912",
+          accessibilityProfile: {
+            primaryDisability: "Mobility / Wheelchair",
+            secondaryNeeds: ["Step-Free Access", "Accessible Washroom"],
+            preferredLanguage: "English",
+            maxWalkingDistance: "Under 200m",
+            preferredTransport: "Accessible Cab",
+            accommodationRequirements: ["Roll-in Shower"],
+            needForGuide: true
+          }
+        };
+        setCurrentUser(newUser);
+        setUserProfile(newUser.accessibilityProfile);
+        addToast(`Welcome to Saarthi, ${newUser.name}! Let's customize your accessibility profile.`, 'success');
+        navigateTo('profile-setup');
+      } else {
+        if (selectedRole === 'admin') switchPersona('admin_sharma');
+        else if (selectedRole === 'guide') switchPersona('guide_vikram');
+        else switchPersona('tourist_wheelchair');
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (authMode === 'signup') {
+        // Create User
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCred.user;
+        
+        if (name) {
+          await updateProfile(user, { displayName: name });
+        }
+
+        const accessibilityProfile = {
           primaryDisability: "Mobility / Wheelchair",
           secondaryNeeds: ["Step-Free Access", "Accessible Washroom"],
           preferredLanguage: "English",
@@ -41,21 +148,72 @@ export default function AuthView() {
           preferredTransport: "Accessible Cab",
           accommodationRequirements: ["Roll-in Shower"],
           needForGuide: true
+        };
+
+        const userDoc = {
+          id: user.uid,
+          name: name || user.email.split('@')[0],
+          email: user.email,
+          role: selectedRole,
+          avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+          udidNumber: udidNumber || "DL042026889912",
+          accessibilityProfile,
+          createdAt: new Date().toISOString()
+        };
+
+        try {
+          await setDoc(doc(db, 'userProfiles', user.uid), userDoc, { merge: true });
+        } catch (dbErr) {
+          console.warn('[Firestore] Profile write error:', dbErr);
         }
-      };
-      setCurrentUser(newUser);
-      setUserProfile(newUser.accessibilityProfile);
-      addToast(`Welcome to Saarthi, ${newUser.name}! Let's customize your accessibility profile.`, 'success');
-      navigateTo('profile-setup');
-    } else {
-      // Default login
-      if (selectedRole === 'admin') {
-        switchPersona('admin_sharma');
-      } else if (selectedRole === 'guide') {
-        switchPersona('guide_vikram');
+
+        setCurrentUser(userDoc);
+        setUserProfile(accessibilityProfile);
+        addToast(`Account created! Welcome to Saarthi, ${userDoc.name}.`, 'success');
+        navigateTo('profile-setup');
       } else {
-        switchPersona('tourist_wheelchair');
+        // Sign In
+        const userCred = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCred.user;
+
+        const userDoc = {
+          id: user.uid,
+          name: user.displayName || user.email.split('@')[0],
+          email: user.email,
+          role: selectedRole,
+          avatar: user.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+          udidNumber: udidNumber || "DL042026889912",
+          accessibilityProfile: {
+            primaryDisability: "Mobility / Wheelchair",
+            secondaryNeeds: ["Step-Free Access", "Accessible Washroom"],
+            preferredLanguage: "English",
+            maxWalkingDistance: "Under 200m",
+            preferredTransport: "Accessible Cab",
+            accommodationRequirements: ["Roll-in Shower"],
+            needForGuide: true
+          }
+        };
+
+        setCurrentUser(userDoc);
+        addToast(`Signed in successfully as ${userDoc.name}!`, 'success');
+        
+        if (selectedRole === 'admin') navigateTo('admin-dashboard');
+        else if (selectedRole === 'guide') navigateTo('guide-dashboard');
+        else navigateTo('dashboard');
       }
+    } catch (err) {
+      console.error('Auth Error:', err);
+      let message = err.message;
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        message = 'Invalid email or password. Please check your credentials or switch to Sign Up.';
+      } else if (err.code === 'auth/email-already-in-use') {
+        message = 'An account with this email already exists. Please switch to Sign In.';
+      } else if (err.code === 'auth/weak-password') {
+        message = 'Password should be at least 6 characters.';
+      }
+      setErrorMsg(message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,12 +224,12 @@ export default function AuthView() {
         <div className="md:col-span-5 bg-gradient-to-br from-saarthi-700 to-slate-900 text-white p-8 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm shadow-inner">
                 <Compass className="w-6 h-6" />
               </div>
-              <span className="text-2xl font-black">Saarthi</span>
+              <span className="text-2xl font-black tracking-tight">Saarthi</span>
             </div>
-            <h2 className="text-2xl font-black mb-3">
+            <h2 className="text-2xl font-black mb-3 leading-snug">
               Accessible Tourism For Everyone
             </h2>
             <p className="text-xs text-saarthi-200 leading-relaxed mb-6">
@@ -79,10 +237,10 @@ export default function AuthView() {
             </p>
 
             {/* Quick Demo Logins for SIH Jury */}
-            <div className="bg-white/10 rounded-2xl p-4 border border-white/15 space-y-2.5">
-              <p className="text-xs font-bold text-yellow-300 uppercase tracking-wider flex items-center gap-1">
+            <div className="bg-white/10 rounded-2xl p-4 border border-white/15 space-y-2.5 shadow-sm">
+              <p className="text-xs font-bold text-yellow-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
-                SIH Jury 1-Click Fast Login
+                SIH Jury 1-Click Fast Demo Login
               </p>
               <div className="space-y-1.5">
                 <button
@@ -91,7 +249,7 @@ export default function AuthView() {
                   className="w-full text-left p-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium transition-colors flex items-center justify-between"
                 >
                   <span>🦽 <strong>Aarav Sharma</strong> (Wheelchair Tourist)</span>
-                  <ArrowRight className="w-3 h-3" />
+                  <ArrowRight className="w-3 h-3 text-saarthi-200" />
                 </button>
                 <button
                   type="button"
@@ -99,7 +257,7 @@ export default function AuthView() {
                   className="w-full text-left p-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium transition-colors flex items-center justify-between"
                 >
                   <span>🦯 <strong>Priya Sundaram</strong> (Blind Traveler)</span>
-                  <ArrowRight className="w-3 h-3" />
+                  <ArrowRight className="w-3 h-3 text-saarthi-200" />
                 </button>
                 <button
                   type="button"
@@ -107,7 +265,7 @@ export default function AuthView() {
                   className="w-full text-left p-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium transition-colors flex items-center justify-between"
                 >
                   <span>🤟 <strong>Vikram Singh</strong> (Certified Guide)</span>
-                  <ArrowRight className="w-3 h-3" />
+                  <ArrowRight className="w-3 h-3 text-saarthi-200" />
                 </button>
                 <button
                   type="button"
@@ -115,23 +273,24 @@ export default function AuthView() {
                   className="w-full text-left p-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium transition-colors flex items-center justify-between"
                 >
                   <span>🛡️ <strong>Dr. Sharma</strong> (Admin Portal)</span>
-                  <ArrowRight className="w-3 h-3" />
+                  <ArrowRight className="w-3 h-3 text-saarthi-200" />
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="pt-6 text-[11px] text-saarthi-300">
-            Powered by Firebase Auth & UDID verification architecture
+          <div className="pt-6 text-[11px] text-saarthi-300 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Cloud Authentication & Firestore Connected
           </div>
         </div>
 
         {/* Right Col: Interactive Form */}
         <div className="md:col-span-7 p-8 flex flex-col justify-center">
           {/* Mode Switcher */}
-          <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
+          <div className="flex bg-slate-100 p-1 rounded-xl mb-5">
             <button
-              onClick={() => setAuthMode('login')}
+              onClick={() => { setAuthMode('login'); setErrorMsg(''); }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                 authMode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
               }`}
@@ -139,7 +298,7 @@ export default function AuthView() {
               Sign In
             </button>
             <button
-              onClick={() => setAuthMode('signup')}
+              onClick={() => { setAuthMode('signup'); setErrorMsg(''); }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                 authMode === 'signup' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
               }`}
@@ -149,9 +308,9 @@ export default function AuthView() {
           </div>
 
           {/* Role Selector */}
-          <div className="mb-5">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Select Role
+          <div className="mb-4">
+            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+              Select Profile Role
             </label>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -159,7 +318,7 @@ export default function AuthView() {
                 onClick={() => setSelectedRole('tourist')}
                 className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
                   selectedRole === 'tourist'
-                    ? 'border-saarthi-600 bg-saarthi-50 text-saarthi-700 shadow-sm'
+                    ? 'border-saarthi-600 bg-saarthi-50 text-saarthi-700 shadow-sm ring-1 ring-saarthi-500/20'
                     : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
@@ -171,7 +330,7 @@ export default function AuthView() {
                 onClick={() => setSelectedRole('guide')}
                 className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
                   selectedRole === 'guide'
-                    ? 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm'
+                    ? 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm ring-1 ring-emerald-500/20'
                     : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
@@ -183,7 +342,7 @@ export default function AuthView() {
                 onClick={() => setSelectedRole('admin')}
                 className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
                   selectedRole === 'admin'
-                    ? 'border-amber-600 bg-amber-50 text-amber-700 shadow-sm'
+                    ? 'border-amber-600 bg-amber-50 text-amber-700 shadow-sm ring-1 ring-amber-500/20'
                     : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
@@ -193,14 +352,46 @@ export default function AuthView() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Google Sign-In Quick Action */}
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full py-2.5 px-4 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl font-semibold text-xs transition-all shadow-sm flex items-center justify-center gap-2.5 disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <span>Continue with Google</span>
+            </button>
+          </div>
+
+          <div className="relative flex py-1 items-center mb-4">
+            <div className="flex-grow border-t border-slate-200"></div>
+            <span className="flex-shrink mx-3 text-[10px] uppercase font-bold text-slate-400">or with email</span>
+            <div className="flex-grow border-t border-slate-200"></div>
+          </div>
+
+          {/* Error Banner */}
+          {errorMsg && (
+            <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             {authMode === 'signup' && (
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                   Full Name
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   <input
                     type="text"
                     required
@@ -214,11 +405,11 @@ export default function AuthView() {
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="email"
                   required
@@ -231,11 +422,11 @@ export default function AuthView() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="password"
                   required
@@ -249,7 +440,7 @@ export default function AuthView() {
 
             {authMode === 'signup' && selectedRole === 'tourist' && (
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                   UDID (Unique Disability ID) Number (Optional)
                 </label>
                 <input
@@ -264,10 +455,20 @@ export default function AuthView() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-saarthi-600 hover:bg-saarthi-700 text-white rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 mt-4"
+              disabled={loading}
+              className="w-full py-3 bg-saarthi-600 hover:bg-saarthi-700 text-white rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 mt-3 disabled:opacity-50"
             >
-              <span>{authMode === 'login' ? `Sign In as ${selectedRole.toUpperCase()}` : 'Create Account & Setup Profile'}</span>
-              <ArrowRight className="w-4 h-4" />
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <span>{authMode === 'login' ? `Sign In as ${selectedRole.toUpperCase()}` : 'Create Account & Setup Profile'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
         </div>
