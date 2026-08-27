@@ -31,6 +31,7 @@ import UserProfileView from './components/views/UserProfileView';
 import AdminDashboardView from './components/views/AdminDashboardView';
 import GuideDashboardView from './components/views/GuideDashboardView';
 import AiChatbotDrawer from './components/views/AiChatbotDrawer';
+import PlacesView from './components/views/PlacesView';
 
 export default function App() {
   const { currentView } = useApp();
@@ -49,6 +50,8 @@ export default function App() {
         return <DestinationsView />;
       case 'destination-detail':
         return <DestinationDetailView />;
+      case 'places':
+        return <PlacesView />;
       case 'route-planner':
         return <RoutePlannerView />;
       case 'hotels':

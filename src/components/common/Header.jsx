@@ -21,7 +21,8 @@ import {
   Lock,
   LogIn,
   Layers,
-  UserCheck
+  UserCheck,
+  MapPinCheck
 } from 'lucide-react';
 import { DEMO_PERSONAS } from '../../data/seedData';
 
@@ -65,13 +66,14 @@ export default function Header() {
   const primaryNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Compass },
     { id: 'destinations', label: 'Destinations', icon: MapPin },
-    { id: 'route-planner', label: 'Step-Free Routes', icon: Navigation },
+    { id: 'places', label: 'Places', icon: MapPinCheck },
     { id: 'hotels', label: 'Stays', icon: Hotel },
     { id: 'guides', label: 'Guides', icon: Users }
   ];
 
   // Secondary navigation (inside "More Features" dropdown on desktop)
   const secondaryNavItems = [
+    { id: 'route-planner', label: 'Step-Free Routes', icon: Navigation, desc: 'Plan accessible step-free journeys' },
     { id: 'gov-services', label: 'Gov Schemes & UDID', icon: Building2, desc: 'Sugamya Bharat, IRCTC concessions' },
     { id: 'community-map', label: 'Community Map', icon: Map, desc: 'Crowdsourced obstacle & ramp reports' },
     { id: 'ai-verify', label: 'AI Vision Scanner', icon: Sparkles, desc: 'Gemini visual ramp verification' },
