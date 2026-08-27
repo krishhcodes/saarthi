@@ -32,11 +32,18 @@ import AdminDashboardView from './components/views/AdminDashboardView';
 import GuideDashboardView from './components/views/GuideDashboardView';
 import AiChatbotDrawer from './components/views/AiChatbotDrawer';
 import PlacesView from './components/views/PlacesView';
+import GuideApplicationView from './components/views/GuideApplicationView';
 
 export default function App() {
-  const { currentView } = useApp();
+  const { currentView, currentUser, guideApplicationStatus } = useApp();
 
   const renderActiveView = () => {
+    // Guide role guard: unverified guides always see the application view
+    if (currentUser?.role === 'guide' && guideApplicationStatus !== 'verified') {
+      if (currentView === 'guide-dashboard' || currentView === 'guide-application') {
+        return <GuideApplicationView />;
+      }
+    }
     switch (currentView) {
       case 'landing':
         return <LandingView />;
@@ -76,6 +83,8 @@ export default function App() {
         return <UserProfileView />;
       case 'admin-dashboard':
         return <AdminDashboardView />;
+      case 'guide-application':
+        return <GuideApplicationView />;
       case 'guide-dashboard':
         return <GuideDashboardView />;
       default:

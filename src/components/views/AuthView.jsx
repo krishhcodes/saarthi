@@ -26,7 +26,7 @@ import {
 } from '../../config/firebase';
 
 export default function AuthView() {
-  const { navigateTo, setCurrentUser, setUserProfile, addToast, switchPersona } = useApp();
+  const { navigateTo, setCurrentUser, setUserProfile, addToast, switchPersona, setGuideApplicationStatus } = useApp();
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup'
   const [selectedRole, setSelectedRole] = useState('tourist'); // 'tourist' | 'guide' | 'admin'
   const [name, setName] = useState('');
@@ -81,9 +81,25 @@ export default function AuthView() {
       setUserProfile(accessibilityProfile);
       addToast(`Welcome ${user.displayName || 'Traveler'}! Signed in with Google.`, 'success');
       
-      if (selectedRole === 'admin') navigateTo('admin-dashboard');
-      else if (selectedRole === 'guide') navigateTo('guide-dashboard');
-      else navigateTo('dashboard');
+      if (selectedRole === 'admin') {
+        navigateTo('admin-dashboard');
+      } else if (selectedRole === 'guide') {
+        try {
+          const appDoc = await getDoc(doc(db, 'guideApplications', user.uid));
+          if (appDoc.exists() && appDoc.data()?.status === 'verified') {
+            setGuideApplicationStatus('verified');
+            navigateTo('guide-dashboard');
+          } else {
+            const status = appDoc.exists() ? appDoc.data()?.status : 'not_applied';
+            setGuideApplicationStatus(status);
+            navigateTo('guide-application');
+          }
+        } catch (e) {
+          navigateTo('guide-application');
+        }
+      } else {
+        navigateTo('dashboard');
+      }
     } catch (err) {
       console.error('Google Sign-In Error:', err);
       setErrorMsg(err.message || 'Google sign-in failed. Please try again.');
@@ -197,9 +213,25 @@ export default function AuthView() {
         setCurrentUser(userDoc);
         addToast(`Signed in successfully as ${userDoc.name}!`, 'success');
         
-        if (selectedRole === 'admin') navigateTo('admin-dashboard');
-        else if (selectedRole === 'guide') navigateTo('guide-dashboard');
-        else navigateTo('dashboard');
+        if (selectedRole === 'admin') {
+          navigateTo('admin-dashboard');
+        } else if (selectedRole === 'guide') {
+          try {
+            const appDoc = await getDoc(doc(db, 'guideApplications', user.uid));
+            if (appDoc.exists() && appDoc.data()?.status === 'verified') {
+              setGuideApplicationStatus('verified');
+              navigateTo('guide-dashboard');
+            } else {
+              const status = appDoc.exists() ? appDoc.data()?.status : 'not_applied';
+              setGuideApplicationStatus(status);
+              navigateTo('guide-application');
+            }
+          } catch (e) {
+            navigateTo('guide-application');
+          }
+        } else {
+          navigateTo('dashboard');
+        }
       }
     } catch (err) {
       console.error('Auth Error:', err);

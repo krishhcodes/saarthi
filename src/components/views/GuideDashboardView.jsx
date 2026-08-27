@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   Users, 
@@ -20,11 +20,24 @@ export default function GuideDashboardView() {
     bookings, 
     updateBookingStatus, 
     currentUser, 
-    addToast 
+    addToast,
+    guideApplicationStatus,
+    navigateTo
   } = useApp();
 
   const [availability, setAvailability] = useState("Available Today");
-  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'profile' | 'docs'
+  const [activeTab, setActiveTab] = useState('bookings');
+
+  // Guard: redirect unverified guides to application flow safely via effect
+  useEffect(() => {
+    if (guideApplicationStatus !== 'verified') {
+      navigateTo('guide-application');
+    }
+  }, [guideApplicationStatus, navigateTo]);
+
+  if (guideApplicationStatus !== 'verified') {
+    return null;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">

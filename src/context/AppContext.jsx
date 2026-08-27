@@ -62,6 +62,12 @@ export function AppProvider({ children }) {
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
 
+  // Guide Verification System
+  // 'not_applied' | 'pending_review' | 'verified' | 'rejected'
+  const [guideApplicationStatus, setGuideApplicationStatus] = useState('not_applied');
+  const [guideRejectionReason, setGuideRejectionReason] = useState(null);
+  const [pendingGuideApplications, setPendingGuideApplications] = useState([]);
+
   // Active Trip Planner State
   const [currentTrip, setCurrentTrip] = useState({
     id: "trip-agra-delhi-1",
@@ -135,6 +141,22 @@ export function AppProvider({ children }) {
             if (data.accessibilityProfile) {
               setUserProfile(data.accessibilityProfile);
             }
+            if (data.role === 'guide') {
+              try {
+                const appDoc = await getDoc(doc(db, 'guideApplications', user.uid));
+                if (appDoc.exists()) {
+                  const appData = appDoc.data();
+                  setGuideApplicationStatus(appData.status || 'not_applied');
+                  if (appData.rejectionReason) {
+                    setGuideRejectionReason(appData.rejectionReason);
+                  }
+                } else {
+                  setGuideApplicationStatus('not_applied');
+                }
+              } catch (appErr) {
+                console.warn('[Guide Application Fetch Warning]', appErr);
+              }
+            }
           } else {
             const newUserData = {
               id: user.uid,
@@ -153,6 +175,7 @@ export function AppProvider({ children }) {
         }
       } else {
         setIsLiveAuth(false);
+        setGuideApplicationStatus('not_applied');
       }
     });
 
@@ -257,11 +280,165 @@ export function AppProvider({ children }) {
       if (persona.role === 'admin') {
         setCurrentView('admin-dashboard');
       } else if (persona.role === 'guide') {
+        // Vikram Singh demo persona is pre-verified — no onboarding required
+        if (persona.isVerified) {
+          setGuideApplicationStatus('verified');
+        }
         setCurrentView('guide-dashboard');
       } else {
         setCurrentView('dashboard');
       }
     }
+  };
+
+  // Guide Verification: Submit application (guide fills form)
+  const submitGuideApplication = async (formData) => {
+    const applicationDoc = {
+      uid: currentUser.id,
+      name: currentUser.name,
+      email: currentUser.email,
+      ...formData,
+      status: 'pending_review',
+      appliedAt: new Date().toISOString(),
+      reviewedAt: null,
+      reviewedBy: null,
+      rejectionReason: null
+    };
+
+    setGuideApplicationStatus('pending_review');
+    setGuideRejectionReason(null);
+
+    if (isFirebaseConfigured()) {
+      try {
+        await setDoc(doc(db, 'guideApplications', currentUser.id), applicationDoc);
+      } catch (err) {
+        console.warn('[Firestore] Error saving guide application:', err);
+      }
+    }
+
+    // Add to pending list for admin view
+    setPendingGuideApplications(prev => [
+      ...prev.filter(a => a.uid !== currentUser.id),
+      applicationDoc
+    ]);
+
+    addToast('Your guide application has been submitted for review!', 'success');
+  };
+
+  // Guide Verification: Admin loads all pending applications
+  const loadGuideApplications = async () => {
+    // Demo seed: always have at least one pending application visible for admins
+    const demoApplication = {
+      uid: 'demo-pending-guide-1',
+      name: 'Farhan Qureshi',
+      email: 'farhan.qureshi@example.com',
+      phone: '+91-98101-44455',
+      city: 'Delhi / Agra',
+      specializations: ['Wheelchair Mobility', 'Sign Language Basics'],
+      languages: ['English', 'Hindi', 'Basic ISL'],
+      licenseNumber: 'ASI-Lic-8812 (Submitted)',
+      experienceYears: 3,
+      bio: 'Three years of experience escorting PwD travelers through the Agra and Delhi heritage circuit. Completed Sugamya Bharat sensitivity training.',
+      status: 'pending_review',
+      appliedAt: '2026-08-27T10:00:00.000Z',
+      reviewedAt: null,
+      reviewedBy: null,
+      rejectionReason: null,
+      certificateBase64: null
+    };
+
+    if (isFirebaseConfigured()) {
+      try {
+        const snap = await getDocs(collection(db, 'guideApplications'));
+        const applications = snap.docs
+          .map(d => ({ uid: d.id, ...d.data() }))
+          .filter(a => a.status === 'pending_review');
+        // Merge demo application if no real ones exist
+        setPendingGuideApplications(
+          applications.length > 0 ? applications : [demoApplication]
+        );
+        return;
+      } catch (err) {
+        console.warn('[Firestore] Error loading guide applications:', err);
+      }
+    }
+    // Fallback: use demo application
+    setPendingGuideApplications(prev =>
+      prev.length > 0 ? prev : [demoApplication]
+    );
+  };
+
+  // Guide Verification: Admin approves an application
+  const approveGuideApplication = async (uid, applicationData) => {
+    setPendingGuideApplications(prev => prev.filter(a => a.uid !== uid));
+
+    if (isFirebaseConfigured()) {
+      try {
+        // Update application status
+        await setDoc(doc(db, 'guideApplications', uid), {
+          status: 'verified',
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: currentUser.name
+        }, { merge: true });
+
+        // Add guide to the public guides collection
+        const guideProfile = {
+          id: uid,
+          name: applicationData.name,
+          city: applicationData.city,
+          specializations: applicationData.specializations || [],
+          languages: applicationData.languages || ['English', 'Hindi'],
+          certifications: [`License: ${applicationData.licenseNumber}`],
+          experienceYears: applicationData.experienceYears || 0,
+          rating: 0,
+          reviewsCount: 0,
+          hourlyRate: '₹400 / hr',
+          dayRate: '₹2,500 / day',
+          isVerified: true,
+          verificationBadge: 'Saarthi Verified Guide',
+          bio: applicationData.bio || '',
+          phone: applicationData.phone || '',
+          availability: 'Available Today',
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80'
+        };
+        await setDoc(doc(db, 'guides', uid), guideProfile);
+      } catch (err) {
+        console.warn('[Firestore] Error approving guide:', err);
+      }
+    }
+
+    // If this is the currently logged-in guide, update their status
+    if (currentUser.id === uid) {
+      setGuideApplicationStatus('verified');
+    }
+
+    addToast('Guide application approved! Saarthi Verified badge issued.', 'success');
+  };
+
+  // Guide Verification: Admin rejects an application with reason
+  const rejectGuideApplication = async (uid, reason) => {
+    setPendingGuideApplications(prev => prev.filter(a => a.uid !== uid));
+
+    if (isFirebaseConfigured()) {
+      try {
+        await setDoc(doc(db, 'guideApplications', uid), {
+          status: 'rejected',
+          rejectionReason: reason,
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: currentUser.name
+        }, { merge: true });
+      } catch (err) {
+        console.warn('[Firestore] Error rejecting guide:', err);
+      }
+    }
+
+    // If this is the currently logged-in guide, update their status
+    if (currentUser.id === uid) {
+      setGuideApplicationStatus('rejected');
+      setGuideRejectionReason(reason);
+    }
+
+    addToast('Guide application rejected. Feedback sent to applicant.', 'info');
   };
 
   // Switch View with optional Voice Announcement
@@ -504,7 +681,16 @@ export function AppProvider({ children }) {
       setIsVoiceModalOpen,
       isSosModalOpen,
       setIsSosModalOpen,
-      isDbLoaded
+      isDbLoaded,
+      guideApplicationStatus,
+      setGuideApplicationStatus,
+      guideRejectionReason,
+      pendingGuideApplications,
+      setPendingGuideApplications,
+      submitGuideApplication,
+      loadGuideApplications,
+      approveGuideApplication,
+      rejectGuideApplication
     }}>
       {children}
     </AppContext.Provider>

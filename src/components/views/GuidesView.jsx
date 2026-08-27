@@ -46,6 +46,8 @@ export default function GuidesView() {
   ];
 
   const filteredGuides = guides.filter(g => {
+    // Only show verified guides in the tourist booking catalog
+    if (!g.isVerified) return false;
     if (selectedSpecialization !== 'All' && !g.specializations.some(s => s.includes(selectedSpecialization))) {
       return false;
     }

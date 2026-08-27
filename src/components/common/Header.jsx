@@ -22,7 +22,8 @@ import {
   LogIn,
   Layers,
   UserCheck,
-  MapPinCheck
+  MapPinCheck,
+  ShieldCheck
 } from 'lucide-react';
 import { DEMO_PERSONAS } from '../../data/seedData';
 
@@ -38,7 +39,8 @@ export default function Header() {
     isAiChatOpen, 
     setIsAiChatOpen,
     setIsSosModalOpen,
-    t
+    t,
+    guideApplicationStatus
   } = useApp();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -62,17 +64,18 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Primary navigation (always visible on desktop)
-  const primaryNavItems = [
+  const userRole = currentUser?.role || 'tourist';
+  const isVerifiedGuide = userRole === 'guide' && guideApplicationStatus === 'verified';
+
+  // ── Tourist Navigation ──────────────────────────────────────────────────
+  const touristPrimaryNav = [
     { id: 'dashboard', label: 'Dashboard', icon: Compass },
     { id: 'destinations', label: 'Destinations', icon: MapPin },
     { id: 'places', label: 'Places', icon: MapPinCheck },
     { id: 'hotels', label: 'Stays', icon: Hotel },
     { id: 'guides', label: 'Guides', icon: Users }
   ];
-
-  // Secondary navigation (inside "More Features" dropdown on desktop)
-  const secondaryNavItems = [
+  const touristSecondaryNav = [
     { id: 'route-planner', label: 'Step-Free Routes', icon: Navigation, desc: 'Plan accessible step-free journeys' },
     { id: 'gov-services', label: 'Gov Schemes & UDID', icon: Building2, desc: 'Sugamya Bharat, IRCTC concessions' },
     { id: 'community-map', label: 'Community Map', icon: Map, desc: 'Crowdsourced obstacle & ramp reports' },
@@ -81,6 +84,42 @@ export default function Header() {
     { id: 'store', label: 'Travel Store', icon: ShoppingBag, desc: 'Portable ramps & assistive gear', badge: cart.length },
     { id: 'trip-planner', label: 'Trip Planner', icon: Calendar, desc: 'Build and score accessible itinerary' }
   ];
+
+  // ── Guide Navigation ────────────────────────────────────────────────────
+  const guidePrimaryNav = isVerifiedGuide ? [
+    { id: 'guide-dashboard', label: 'Guide Dashboard', icon: Compass },
+    { id: 'community-map', label: 'Community Map', icon: Map },
+  ] : [
+    { id: 'guide-dashboard', label: 'Guide Portal', icon: ShieldCheck }
+  ];
+  const guideSecondaryNav = isVerifiedGuide ? [
+    { id: 'ai-verify', label: 'AI Vision Scanner', icon: Sparkles, desc: 'Verify monument accessibility' },
+    { id: 'gov-services', label: 'Gov Schemes', icon: Building2, desc: 'MOT resources & guide benefits' },
+  ] : [];
+
+  // ── Admin Navigation ────────────────────────────────────────────────────
+  const adminPrimaryNav = [
+    { id: 'admin-dashboard', label: 'Admin Portal', icon: ShieldCheck },
+    { id: 'community-map', label: 'Audit Map', icon: Map },
+    { id: 'journey-score', label: 'Platform Stats', icon: Gauge },
+  ];
+  const adminSecondaryNav = [
+    { id: 'gov-services', label: 'Gov Services', icon: Building2, desc: 'Sugamya Bharat policy management' },
+    { id: 'ai-verify', label: 'AI Vision Scanner', icon: Sparkles, desc: 'Validate monument AI reports' },
+  ];
+
+  // ── Active role-based selection ─────────────────────────────────────────
+  const primaryNavItems = userRole === 'admin'
+    ? adminPrimaryNav
+    : userRole === 'guide'
+      ? guidePrimaryNav
+      : touristPrimaryNav;
+
+  const secondaryNavItems = userRole === 'admin'
+    ? adminSecondaryNav
+    : userRole === 'guide'
+      ? guideSecondaryNav
+      : touristSecondaryNav;
 
   const allNavItems = [...primaryNavItems, ...secondaryNavItems];
   const isSecondaryActive = secondaryNavItems.some(item => item.id === currentView);
