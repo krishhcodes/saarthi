@@ -15,6 +15,7 @@ import {
 } from '../../services/placesService';
 import { fetchFootways, getFootwayStyle } from '../../services/osmFootwayService';
 import { fetchWikimediaPhoto } from '../../services/wikimediaService';
+import { resolveMainAccessibleEntrance } from '../../services/routeService';
 
 // Fix leaflet default icon path issue in Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -130,36 +131,35 @@ function categorizeVisitorPoints(points = []) {
 }
 
 export default function PlacesView() {
-  const { userProfile, addToast, navigateTo, setSelectedDestination, destinations } = useApp();
+  const { userProfile, addToast, navigateTo, setSelectedDestination, setNavigatingToEntrance, destinations } = useApp();
   const primaryDisability = userProfile?.primaryDisability || 'Mobility / Wheelchair';
   const disabilityKey = DISABILITY_KEY[primaryDisability] || 'mobility';
 
   const handleNavigateToRoute = (point = null) => {
-    // Sync current destination if available
     if (evaluatedPlace) {
+      const entrance = resolveMainAccessibleEntrance(evaluatedPlace);
       const match = destinations?.find(d => 
         d.id === evaluatedPlace.id || 
         d.name?.toLowerCase().includes(evaluatedPlace.name?.toLowerCase()) ||
         evaluatedPlace.name?.toLowerCase().includes(d.name?.toLowerCase())
       );
-      if (match) {
-        setSelectedDestination(match);
-      } else {
-        setSelectedDestination({
-          id: evaluatedPlace.id,
-          name: evaluatedPlace.name,
-          city: evaluatedPlace.city,
-          state: evaluatedPlace.state || evaluatedPlace.city,
-          coverImage: evaluatedPlace.coverImage,
-          lat: point?.lat || evaluatedPlace.lat,
-          lng: point?.lng || evaluatedPlace.lng,
-          accessibilityScore: evaluatedPlace.overallScore || 90
-        });
-      }
+      const destPayload = {
+        id: evaluatedPlace.id,
+        name: evaluatedPlace.name,
+        city: evaluatedPlace.city,
+        state: evaluatedPlace.state || evaluatedPlace.city,
+        image: evaluatedPlace.coverImage,
+        accessibilityScore: evaluatedPlace.overallScore || 90,
+        description: match?.description || `${evaluatedPlace.name} in ${evaluatedPlace.city}`,
+        mainEntrance: entrance,
+        lat: entrance?.lat || evaluatedPlace.lat,
+        lng: entrance?.lng || evaluatedPlace.lng
+      };
+      setSelectedDestination(destPayload);
+      setNavigatingToEntrance(entrance);
+      addToast?.(`Opening Route Navigator to ${evaluatedPlace.name} (${entrance?.name || 'Main Entrance'})...`, 'info');
+      navigateTo('route-planner');
     }
-    const pointLabel = point?.name ? ` to ${point.name}` : '';
-    addToast?.(`Opening Route Navigator${pointLabel}...`, 'info');
-    navigateTo('route-planner');
   };
 
   const [searchQuery, setSearchQuery] = useState('');

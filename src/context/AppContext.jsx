@@ -37,6 +37,8 @@ export function AppProvider({ children }) {
   // Navigation
   const [currentView, setCurrentView] = useState('landing');
   const [selectedDestination, setSelectedDestination] = useState(INITIAL_DESTINATIONS[0]);
+  const [isSelectingDestinationForRoute, setIsSelectingDestinationForRoute] = useState(false);
+  const [navigatingToEntrance, setNavigatingToEntrance] = useState(null);
   const [selectedGuideForBooking, setSelectedGuideForBooking] = useState(null);
   const [selectedHotelForBooking, setSelectedHotelForBooking] = useState(null);
 
@@ -633,6 +635,10 @@ export function AppProvider({ children }) {
       navigateTo,
       selectedDestination,
       setSelectedDestination,
+      isSelectingDestinationForRoute,
+      setIsSelectingDestinationForRoute,
+      navigatingToEntrance,
+      setNavigatingToEntrance,
       selectedGuideForBooking,
       setSelectedGuideForBooking,
       selectedHotelForBooking,

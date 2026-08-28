@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { fetchAttractionRecommendations } from '../../services/recommendationService';
 import { INDIA_STATES_AND_CITIES } from '../../data/indiaStatesData';
+import { resolveMainAccessibleEntrance } from '../../services/routeService';
 
 export default function DestinationsView() {
   const { 
@@ -34,6 +35,9 @@ export default function DestinationsView() {
     userProfile, 
     navigateTo, 
     setSelectedDestination,
+    isSelectingDestinationForRoute,
+    setIsSelectingDestinationForRoute,
+    setNavigatingToEntrance,
     addToast 
   } = useApp();
 
@@ -145,6 +149,7 @@ export default function DestinationsView() {
   });
 
   const handlePlanRoute = (attraction) => {
+    const entrance = resolveMainAccessibleEntrance(attraction);
     setSelectedDestination({
       id: attraction.id,
       name: attraction.name,
@@ -153,9 +158,12 @@ export default function DestinationsView() {
       coordinates: attraction.coordinates,
       image: attraction.image,
       accessibilityScore: attraction.calculatedMatchScore || 90,
-      description: attraction.description
+      description: attraction.description,
+      mainEntrance: entrance
     });
-    addToast(`Selected ${attraction.name} for route planning!`, 'info');
+    setNavigatingToEntrance(entrance);
+    setIsSelectingDestinationForRoute(false);
+    addToast(`Selected ${attraction.name} (${entrance?.name || 'Main Entrance'}) for Route Navigator!`, 'success');
     navigateTo('route-planner');
   };
 
@@ -167,7 +175,30 @@ export default function DestinationsView() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      
+      {/* Contextual Route Destination Selector Banner */}
+      {isSelectingDestinationForRoute && (
+        <div className="bg-saarthi-600 text-white rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
+              <Navigation className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-black text-base">Select Destination for Route Navigator</h3>
+              <p className="text-xs text-sky-100">Click &quot;Plan Step-Free Route&quot; on any attraction below. Your navigation will automatically route to its official Main Accessible Entrance.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setIsSelectingDestinationForRoute(false);
+              navigateTo('route-planner');
+            }}
+            className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white border border-white/30 rounded-xl text-xs font-bold transition-colors whitespace-nowrap shrink-0"
+          >
+            ← Cancel & Back to Navigator
+          </button>
+        </div>
+      )}
+
       {/* 1. Header Banner with Active User Profile Alignment */}
       <div className="bg-gradient-to-r from-slate-900 via-saarthi-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-slate-800">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
