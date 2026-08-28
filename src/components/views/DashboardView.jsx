@@ -29,8 +29,6 @@ export default function DashboardView() {
     userProfile, 
     navigateTo, 
     destinations, 
-    guides, 
-    govServices, 
     currentTrip,
     setIsAiChatOpen 
   } = useApp();
@@ -292,114 +290,6 @@ export default function DashboardView() {
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Bottom 2-Col: Available Guides + Government Support Near You */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Available Specialized Guides */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
-                <Users className="w-4 h-4 text-purple-600" />
-                <span>Available Specialized Guides</span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                Verified escorts with disability-sensitivity certifications.
-              </p>
-            </div>
-            <button
-              onClick={() => navigateTo('guides')}
-              className="text-xs font-bold text-saarthi-600 hover:text-saarthi-800"
-            >
-              View all 8 Guides →
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {guides.slice(0, 2).map((guide) => (
-              <div
-                key={guide.id}
-                onClick={() => navigateTo('guides', { guide })}
-                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-purple-50/50 border border-slate-200 transition-colors cursor-pointer flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <img
-                    src={guide.avatar}
-                    alt={guide.name}
-                    className="w-12 h-12 rounded-xl object-cover"
-                  />
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <h4 className="font-bold text-xs text-slate-900">{guide.name}</h4>
-                      {guide.isVerified && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
-                          ✓ Verified
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-600">{guide.specializations.join(' • ')}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{guide.city} • ★ {guide.rating} ({guide.reviewsCount} reviews)</p>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-xs font-black text-slate-900">{guide.hourlyRate}</span>
-                  <span className="block text-[10px] font-semibold text-emerald-600">{guide.availability}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Government Schemes & Local Support */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-amber-600" />
-                <span>Government Support Near You</span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                National and regional schemes active at your destinations.
-              </p>
-            </div>
-            <button
-              onClick={() => navigateTo('gov-services')}
-              className="text-xs font-bold text-saarthi-600 hover:text-saarthi-800"
-            >
-              View all 10 Schemes →
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {govServices.slice(0, 2).map((service) => (
-              <div
-                key={service.id}
-                className="p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-1.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-950">{service.title}</span>
-                  <span className="text-[10px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded">
-                    {service.badge}
-                  </span>
-                </div>
-                <p className="text-[11px] text-amber-900/80 leading-relaxed">
-                  {service.benefits}
-                </p>
-                <div className="pt-1 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-600 font-mono text-[10px]">{service.contact}</span>
-                  <button 
-                    onClick={() => navigateTo('gov-services')}
-                    className="font-bold text-saarthi-700 hover:underline"
-                  >
-                    {service.actionText} →
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </div>

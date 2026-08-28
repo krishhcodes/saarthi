@@ -58,26 +58,39 @@ function generateSearchVariants(placeName, city = '') {
   if (!placeName) return [];
   const clean = placeName
     .replace(/\(.*?\)/g, '') // remove parentheses
-    .replace(/\b(Complex|Heritage Site|Monument|Entrance Plaza|Plaza|Visitor Center)\b/gi, '')
+    .replace(/\b(Complex|Heritage Site|Monument|Entrance Plaza|Plaza|Visitor Center|Promenade)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
   const variants = [];
+  const cleanCity = city ? city.split(',')[0].trim() : '';
+
+  // 1. Cleaned primary clause before '&' or 'and' or '/'
+  const primaryClause = clean.split(/\s*(&|and|\/)\s*/i)[0].trim();
+  if (primaryClause && cleanCity) {
+    variants.push(`${primaryClause}, ${cleanCity}`);
+    variants.push(`${primaryClause} ${cleanCity}`);
+  }
+  if (primaryClause) {
+    variants.push(primaryClause);
+  }
   
-  // 1. Cleaned name + city
-  if (city) {
-    const cleanCity = city.split(',')[0].trim();
+  // 2. Cleaned name + city
+  if (cleanCity) {
     variants.push(`${clean}, ${cleanCity}`);
     variants.push(`${clean} ${cleanCity}`);
   }
 
-  // 2. Cleaned name alone
+  // 3. Cleaned name alone
   variants.push(clean);
 
-  // 3. Raw place name alone
+  // 4. Raw place name alone
   variants.push(placeName.split(',')[0].trim());
 
-  // 4. Known aliases for Indian landmarks
+  // 5. Known aliases for Indian landmarks
+  if (/pichola/i.test(placeName)) variants.push('Lake Pichola');
+  if (/city palace/i.test(placeName) && /udaipur/i.test(city || placeName)) variants.push('City Palace, Udaipur');
+  if (/city palace/i.test(placeName) && /jaipur/i.test(city || placeName)) variants.push('City Palace, Jaipur');
   if (/qutub|qutb/i.test(placeName)) variants.push('Qutb Minar');
   if (/taj mahal/i.test(placeName)) variants.push('Taj Mahal');
   if (/hawa mahal/i.test(placeName)) variants.push('Hawa Mahal');
