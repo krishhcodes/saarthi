@@ -11,7 +11,8 @@ import {
   QUICK_ORIGIN_HUBS,
   buildRoadRoutes,
   buildTrainRoute,
-  buildFlightRoute
+  buildFlightRoute,
+  enrichRoutesWithCommunityData
 } from '../../services/routeService';
 import { fetchRealRoadDistance } from '../../services/osrmService';
 import { discoverTransitInfrastructure } from '../../services/overpassTransitService';
@@ -35,6 +36,7 @@ export default function RoutePlannerView() {
     setNavigatingToEntrance,
     setIsSelectingDestinationForRoute,
     userProfile, currentUser,
+    communityReports,
     updateTrip, navigateTo, addToast
   } = useApp();
 
@@ -92,7 +94,8 @@ export default function RoutePlannerView() {
 
       // Layer 3: Build only the routes for modes that exist on the ground
       const entrance = mainEntrance || resolveMainAccessibleEntrance(destination);
-      const roadRoutes = buildRoadRoutes(origin.name, distanceKm, durationMin, entrance, infra.tripTier);
+      let roadRoutes = buildRoadRoutes(origin.name, distanceKm, durationMin, entrance, infra.tripTier);
+      roadRoutes = enrichRoutesWithCommunityData(roadRoutes, origin, entrance, communityReports);
 
       const allRoutes = { road: roadRoutes };
       if (infra.trainFeasible) {
@@ -102,10 +105,11 @@ export default function RoutePlannerView() {
           infra.originStations, infra.destStations, entrance,
           oLat, oLng, destLat, destLng
         );
-        allRoutes.train = [trainRoute];
+        allRoutes.train = enrichRoutesWithCommunityData([trainRoute], origin, entrance, communityReports);
       }
       if (infra.flightFeasible) {
-        allRoutes.flight = [buildFlightRoute(origin.name, distanceKm, infra.originAirports, infra.destAirports, entrance)];
+        const flightRoute = buildFlightRoute(origin.name, distanceKm, infra.originAirports, infra.destAirports, entrance);
+        allRoutes.flight = enrichRoutesWithCommunityData([flightRoute], origin, entrance, communityReports);
       }
 
       setRouteData({
@@ -132,7 +136,7 @@ export default function RoutePlannerView() {
     } finally {
       setIsComputingRoute(false);
     }
-  }, [mainEntrance]);
+  }, [mainEntrance, communityReports]);
 
   // Trigger route computation whenever origin or destination changes
   useEffect(() => {
@@ -591,7 +595,37 @@ export default function RoutePlannerView() {
                 <span className="text-lg font-black text-sky-400">{mainEntrance?.rampIncline || '1:12 Ramp'}</span>
               </div>
             </div>
+
+            {/* Live Crowdsourced Community Intelligence Banner */}
+            {((currentRoute.communityAlerts && currentRoute.communityAlerts.length > 0) || (currentRoute.communityVerifiedAids && currentRoute.communityVerifiedAids.length > 0)) && (
+              <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
+                {currentRoute.communityAlerts?.map(alert => (
+                  <div key={alert.id} className="p-2.5 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-200 text-xs flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 font-medium">
+                      <span className="text-sm">⚠️</span>
+                      <span><strong>Community Obstacle Advisory:</strong> {alert.title}</span>
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400 text-black shrink-0">
+                      {alert.status}
+                    </span>
+                  </div>
+                ))}
+
+                {currentRoute.communityVerifiedAids?.map(aid => (
+                  <div key={aid.id} className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 font-medium">
+                      <span className="text-sm">✓</span>
+                      <span><strong>Ground Verified Access Aid:</strong> {aid.title}</span>
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-400 text-black shrink-0">
+                      {aid.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
 
           {/* ── Route Options + Steps ──────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

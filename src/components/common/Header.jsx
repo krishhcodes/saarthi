@@ -78,9 +78,7 @@ export default function Header() {
   const touristSecondaryNav = [
     { id: 'community-map', label: 'Community Map', icon: Map, desc: 'Crowdsourced obstacle & ramp reports' },
     { id: 'ai-verify', label: 'AI Vision Scanner', icon: Sparkles, desc: 'Gemini visual ramp verification' },
-    { id: 'gov-services', label: 'Gov Schemes & UDID', icon: Building2, desc: 'Sugamya Bharat, IRCTC concessions' },
-    { id: 'journey-score', label: 'Journey Score', icon: Gauge, desc: '5-tier trip accessibility metric' },
-    { id: 'trip-planner', label: 'Trip Planner', icon: Calendar, desc: 'Build and score accessible itinerary' }
+    { id: 'gov-services', label: 'Gov Schemes & UDID', icon: Building2, desc: 'Sugamya Bharat, IRCTC concessions' }
   ];
 
   // ── Guide Navigation ────────────────────────────────────────────────────
@@ -99,7 +97,7 @@ export default function Header() {
   const adminPrimaryNav = [
     { id: 'admin-dashboard', label: 'Admin Portal', icon: ShieldCheck },
     { id: 'community-map', label: 'Audit Map', icon: Map },
-    { id: 'journey-score', label: 'Platform Stats', icon: Gauge },
+    { id: 'destinations', label: 'Attractions', icon: MapPin },
   ];
   const adminSecondaryNav = [
     { id: 'gov-services', label: 'Gov Services', icon: Building2, desc: 'Sugamya Bharat policy management' },

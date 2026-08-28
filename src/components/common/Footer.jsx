@@ -58,8 +58,8 @@ export default function Footer() {
                 </button>
               </li>
               <li>
-                <button onClick={() => navigateTo('journey-score')} className="hover:text-saarthi-400 transition-colors">
-                  Accessibility Journey Score
+                <button onClick={() => navigateTo('ai-verify')} className="hover:text-saarthi-400 transition-colors">
+                  AI Computer Vision Scanner
                 </button>
               </li>
             </ul>

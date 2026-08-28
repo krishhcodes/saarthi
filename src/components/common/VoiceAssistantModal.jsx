@@ -93,12 +93,12 @@ export default function VoiceAssistantModal() {
       return;
     }
 
-    if (text.includes("score") || text.includes("journey")) {
-      setFeedback("Opening Accessibility Journey Score Calculator...");
-      speakText("Opening Journey Score.");
+    if (text.includes("score") || text.includes("journey") || text.includes("navigator")) {
+      setFeedback("Opening Step-Free Route Navigator...");
+      speakText("Opening Route Navigator.");
       setTimeout(() => {
         setIsVoiceModalOpen(false);
-        navigateTo('journey-score');
+        navigateTo('route-planner');
       }, 900);
       return;
     }
@@ -117,26 +117,6 @@ export default function VoiceAssistantModal() {
       setHighContrast(!highContrast);
       setFeedback(`High contrast mode ${!highContrast ? 'Enabled' : 'Disabled'}`);
       speakText(`High contrast mode ${!highContrast ? 'Enabled' : 'Disabled'}`);
-      return;
-    }
-
-    if (text.includes("hotel") || text.includes("stay")) {
-      setFeedback("Opening Accessible Stays catalog...");
-      speakText("Opening Accessible Stays.");
-      setTimeout(() => {
-        setIsVoiceModalOpen(false);
-        navigateTo('hotels');
-      }, 900);
-      return;
-    }
-
-    if (text.includes("store") || text.includes("product") || text.includes("equipment")) {
-      setFeedback("Opening Accessible Travel Store...");
-      speakText("Opening Accessible Travel Store.");
-      setTimeout(() => {
-        setIsVoiceModalOpen(false);
-        navigateTo('store');
-      }, 900);
       return;
     }
 

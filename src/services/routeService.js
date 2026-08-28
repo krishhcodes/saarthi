@@ -11,6 +11,7 @@
 
 import { PLACES_CATALOG } from '../data/placesData.js';
 import { fetchRealRoadDistance } from './osrmService.js';
+import { getNearbyHazards, getNearbyAccessibleAids } from './communityReportService.js';
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -420,3 +421,67 @@ export function buildFlightRoute(originName, distanceKm, originAirports, destAir
     ]
   };
 }
+
+/**
+ * Dynamically enrich calculated routes with live crowdsourced community audits,
+ * obstacles, and verified step-free access points near the destination or corridor.
+ */
+export function enrichRoutesWithCommunityData(routes, originCoords, destEntrance, communityReports = []) {
+  if (!routes || !routes.length || !communityReports || !communityReports.length) return routes;
+
+  const destCoords = [destEntrance?.lat || 27.1738, destEntrance?.lng || 78.0421];
+  const nearbyHazards = getNearbyHazards(destCoords, 2.5, communityReports);
+  const nearbyAids = getNearbyAccessibleAids(destCoords, 2.5, communityReports);
+
+  return routes.map(route => {
+    let penalty = 0;
+    let bonus = 0;
+    const advisories = [];
+    const confirmedAids = [];
+
+    nearbyHazards.forEach(h => {
+      penalty += h.status === 'Verified' ? 6 : 3;
+      advisories.push({
+        id: h.id,
+        type: 'hazard',
+        title: h.title,
+        description: h.description,
+        status: h.status,
+        date: h.date
+      });
+    });
+
+    nearbyAids.forEach(a => {
+      bonus += a.status === 'Verified' ? 2 : 1;
+      confirmedAids.push({
+        id: a.id,
+        type: 'aid',
+        title: a.title,
+        description: a.description,
+        status: a.status
+      });
+    });
+
+    const adjustedScore = Math.max(70, Math.min(99, route.accessibilityScore - penalty + bonus));
+
+    // If active hazards exist, prepend a caution step or note to the route
+    const enrichedSteps = [...(route.steps || [])];
+    if (advisories.length > 0) {
+      enrichedSteps.unshift({
+        instruction: `⚠️ Ground Caution: ${advisories[0].title}. Verified alternative ramp path suggested.`,
+        distance: '0m',
+        accessibility: 'Community Audited Alert'
+      });
+    }
+
+    return {
+      ...route,
+      accessibilityScore: adjustedScore,
+      communityAlerts: advisories,
+      communityVerifiedAids: confirmedAids,
+      hasCommunityHazard: advisories.length > 0,
+      steps: enrichedSteps
+    };
+  });
+}
+

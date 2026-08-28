@@ -8,7 +8,7 @@ import {
   Users, 
   Building2, 
   Map, 
-  Gauge, 
+  Volume2, 
   CheckCircle2, 
   ArrowRight, 
   Calendar, 
@@ -58,7 +58,7 @@ export default function DashboardView() {
     { label: "AI Vision Scan", icon: Sparkles, view: 'ai-verify', color: "bg-rose-600 text-white" },
     { label: "Community Map", icon: Map, view: 'community-map', color: "bg-teal-600 text-white" },
     { label: "Gov Schemes", icon: Building2, view: 'gov-services', color: "bg-amber-600 text-white" },
-    { label: "Journey Score", icon: Gauge, view: 'journey-score', color: "bg-slate-900 text-white" }
+    { label: "Audio Guide", icon: Volume2, view: 'multilingual', color: "bg-slate-900 text-white" }
   ];
 
   return (
@@ -138,73 +138,73 @@ export default function DashboardView() {
         </div>
       </div>
 
-      {/* "Your Journey" Active Progress Card */}
+      {/* "Active Route Corridor" Featured Progress Card */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm relative overflow-hidden">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-6 border-b border-slate-100">
           <div>
             <div className="flex items-center gap-2 text-xs font-bold text-saarthi-600 uppercase tracking-wider mb-1">
               <Activity className="w-4 h-4" />
-              <span>Your Active Journey Plan</span>
+              <span>Active Step-Free Heritage Corridor</span>
             </div>
             <h3 className="text-xl font-extrabold text-slate-900">
-              {currentTrip.title}
+              Taj Mahal Accessible Circuit
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Dates: {currentTrip.startDate} to {currentTrip.endDate} • {currentTrip.city}
+              Verified Step-Free Approach • Agra, Uttar Pradesh
             </p>
           </div>
 
           <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200">
             <div className="text-right">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Total Journey Score
+                Route Accessibility
               </span>
               <span className="text-2xl font-black text-emerald-600">
-                {currentTrip.scores.overall} / 100
+                100% Step-Free
               </span>
             </div>
             <button
-              onClick={() => navigateTo('journey-score')}
-              className="px-3.5 py-2 bg-saarthi-600 hover:bg-saarthi-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center gap-1"
+              onClick={() => navigateTo('route-planner')}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center gap-1"
             >
-              <span>Score Analysis</span>
+              <span>Route Navigator</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Journey Breakdown Cards */}
+        {/* Corridor Breakdown Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-bold text-slate-700">🏛️ Destination</span>
-              <span className="font-bold text-emerald-600">{currentTrip.destinations[0]?.name || "Taj Mahal"}</span>
+              <span className="font-bold text-slate-700">🏛️ Main Entrance</span>
+              <span className="font-bold text-emerald-600">East Gate Ramp</span>
             </div>
-            <p className="text-[11px] text-slate-500">1:12 Ramp to marble plinth & golf shuttles</p>
+            <p className="text-[11px] text-slate-500">1:12 Step-free ramp to marble plinth</p>
           </div>
 
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-bold text-slate-700">🧭 Step-Free Route</span>
-              <span className="font-bold text-emerald-600">Score 96</span>
+              <span className="font-bold text-slate-700">🧭 Step-Free Transit</span>
+              <span className="font-bold text-emerald-600">0 Stairs</span>
             </div>
-            <p className="text-[11px] text-slate-500">0 Stairs • 4 Permanent Ramps</p>
+            <p className="text-[11px] text-slate-500">Accessible WAV taxi & flat pathways</p>
           </div>
 
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-bold text-slate-700">🏨 Stay</span>
-              <span className="font-bold text-emerald-600">The Oberoi Amarvilas</span>
+              <span className="font-bold text-slate-700">🦽 On-Ground Aid</span>
+              <span className="font-bold text-emerald-600">Battery Carts</span>
             </div>
-            <p className="text-[11px] text-slate-500">Roll-in shower with padded transfer bench</p>
+            <p className="text-[11px] text-slate-500">Free shuttle from Shilpgram parking</p>
           </div>
 
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-bold text-slate-700">🤟 Guide Matched</span>
-              <span className="font-bold text-emerald-600">Vikram Singh</span>
+              <span className="font-bold text-slate-700">🤟 Certified Escort</span>
+              <span className="font-bold text-emerald-600">ISL & Mobility</span>
             </div>
-            <p className="text-[11px] text-slate-500">Sugamya Bharat Certified Guide</p>
+            <p className="text-[11px] text-slate-500">Sugamya Bharat Verified Guides</p>
           </div>
         </div>
       </div>

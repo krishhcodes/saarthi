@@ -33,10 +33,17 @@ export default function DestinationDetailView() {
     updateTrip, 
     currentTrip, 
     addToast,
-    communityReports 
+    communityReports,
+    getLocationCommunityImpact
   } = useApp();
 
   const dest = selectedDestination || destinations[0];
+  const communityImpact = getLocationCommunityImpact 
+    ? getLocationCommunityImpact(dest.id, dest.coordinates)
+    : { netScoreModifier: 0, verifiedCount: 0, hazardCount: 0 };
+
+  const dynamicScore = Math.max(65, Math.min(100, (dest.accessibilityScore || 90) + (communityImpact.netScoreModifier || 0)));
+
 
   const handleAddToTrip = () => {
     const isAlreadyAdded = currentTrip.destinations.some(d => d.id === dest.id);
@@ -101,9 +108,16 @@ export default function DestinationDetailView() {
             <MapPin className="w-3.5 h-3.5 text-saarthi-400" />
             <span>{dest.city}, {dest.state}</span>
           </div>
-          <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm text-slate-900 px-3.5 py-1.5 rounded-xl shadow-lg font-black text-sm flex items-center gap-1">
+          <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm text-slate-900 px-3.5 py-1.5 rounded-xl shadow-lg font-black text-sm flex items-center gap-1.5">
             <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
-            <span>Score: {dest.accessibilityScore}/100</span>
+            <span>Score: {dynamicScore}/100</span>
+            {communityImpact.netScoreModifier !== 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                communityImpact.netScoreModifier > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {communityImpact.netScoreModifier > 0 ? `+${communityImpact.netScoreModifier}` : communityImpact.netScoreModifier} Pts
+              </span>
+            )}
           </div>
         </div>
 

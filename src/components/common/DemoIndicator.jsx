@@ -48,9 +48,9 @@ export default function DemoIndicator() {
     },
     {
       num: 7,
-      title: "Journey Score",
-      desc: "Calculate 5-tier multi-factor score & improve to 93/100",
-      action: () => navigateTo('journey-score')
+      title: "Gov Schemes & UDID",
+      desc: "Sugamya Bharat policies, UDID benefits & travel concessions",
+      action: () => navigateTo('gov-services')
     },
     {
       num: 8,

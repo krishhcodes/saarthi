@@ -77,18 +77,18 @@ export default function UserProfileView() {
 
       {/* 2-Col Grid: My Saved Accessible Trips & My Community Contributions */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left: Saved Accessible Trips (6 cols) */}
+        {/* Left: Active Route Navigator (6 cols) */}
         <div className="lg:col-span-6 bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-saarthi-600" />
-              <span>Saved Accessible Trips</span>
+              <span>Active Route & Destination</span>
             </h3>
             <button
-              onClick={() => navigateTo('trip-planner')}
+              onClick={() => navigateTo('route-planner')}
               className="text-xs font-bold text-saarthi-600 hover:underline"
             >
-              Open Trip Planner →
+              Open Route Navigator →
             </button>
           </div>
 
@@ -96,7 +96,7 @@ export default function UserProfileView() {
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm text-slate-900">{currentTrip.title}</span>
               <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                Score {currentTrip.scores.overall}/100
+                100% Step-Free
               </span>
             </div>
             <p className="text-xs text-slate-500">{currentTrip.city} • {currentTrip.startDate} to {currentTrip.endDate}</p>
@@ -106,10 +106,10 @@ export default function UserProfileView() {
             <div className="pt-2 flex justify-between items-center text-xs">
               <span className="text-slate-500">🏨 {currentTrip.hotel?.name}</span>
               <button
-                onClick={() => navigateTo('trip-planner')}
+                onClick={() => navigateTo('route-planner')}
                 className="font-bold text-saarthi-600 hover:underline"
               >
-                View Full Itinerary →
+                Plan Step-Free Route →
               </button>
             </div>
           </div>

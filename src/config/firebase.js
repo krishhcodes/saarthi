@@ -20,6 +20,7 @@ import {
   getDoc,
   query,
   orderBy,
+  onSnapshot,
   serverTimestamp 
 } from 'firebase/firestore';
 
@@ -64,6 +65,7 @@ export {
   getDoc,
   query,
   orderBy,
+  onSnapshot,
   serverTimestamp
 };
 

@@ -32,6 +32,13 @@ import {
   isFirebaseConfigured 
 } from '../config/firebase';
 import { seedFirestoreIfEmpty } from '../services/seedService';
+import { 
+  subscribeToCommunityReports, 
+  enrichReportWithAiAnalysis, 
+  evaluateReportConsensus, 
+  calculateLocationCommunityScore, 
+  getNearbyHazards 
+} from '../services/communityReportService';
 
 const AppContext = createContext();
 
@@ -234,12 +241,6 @@ export function AppProvider({ children }) {
           setGuides(guidesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         }
 
-        // Fetch Community Reports
-        const reportsSnap = await getDocs(collection(db, 'communityReports'));
-        if (!reportsSnap.empty) {
-          setCommunityReports(reportsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-        }
-
         // Fetch Bookings
         const bookingsSnap = await getDocs(collection(db, 'bookings'));
         if (!bookingsSnap.empty) {
@@ -255,6 +256,15 @@ export function AppProvider({ children }) {
 
     loadCloudDatabase();
   }, []);
+
+  // 2b. Real-Time Community Reports Listener with Automatic Consensus Sync
+  useEffect(() => {
+    const unsubscribeCommunity = subscribeToCommunityReports((reports) => {
+      setCommunityReports(reports);
+    });
+    return () => unsubscribeCommunity();
+  }, []);
+
 
   // 3. Handle High Contrast, Text Size & Dyslexic Font classes on <html> + localStorage persistence
   useEffect(() => {
@@ -528,9 +538,7 @@ export function AppProvider({ children }) {
         'gov-services': 'Government and Local Support Services',
         'ai-verify': 'AI Visual Accessibility Verification',
         'community-map': 'Community-Powered Accessibility Map',
-        'journey-score': 'Accessibility Journey Score Calculator',
         'store': 'Accessible Travel Store',
-        'trip-planner': 'My Accessible Trip Planner',
         'profile': 'User Profile and Contribution History'
       };
       if (titles[view]) {
@@ -539,39 +547,55 @@ export function AppProvider({ children }) {
     }
   };
 
-  // Community Map: Add new report with Firestore sync
-  const addCommunityReport = async (report) => {
-    const newReport = {
-      id: `rep-${Date.now()}`,
+  // Community Map: Add new report with AI Computer Vision Enrichment & Firestore sync
+  const addCommunityReport = async (report, imageSource = null) => {
+    const tempId = report.id || `rep-${Date.now()}`;
+    const baseObj = {
+      id: tempId,
       ...report,
       date: new Date().toISOString().split('T')[0],
       confirmCount: 1,
       disputeCount: 0,
-      status: "Community Verified"
+      status: "Needs Verification"
     };
 
-    setCommunityReports(prev => [newReport, ...prev]);
+    // Enrich with AI Vision Analysis if photo is supplied
+    const enriched = await enrichReportWithAiAnalysis(baseObj, imageSource || report.photoUrl);
+
+    // Optimistic local state update
+    setCommunityReports(prev => [enriched, ...prev.filter(r => r.id !== enriched.id)]);
 
     if (isFirebaseConfigured()) {
       try {
-        await setDoc(doc(db, 'communityReports', newReport.id), newReport);
+        await setDoc(doc(db, 'communityReports', enriched.id), enriched);
       } catch (err) {
         console.warn('[Firestore] Error saving community report:', err);
       }
     }
 
-    addToast("Accessibility report saved to Cloud Firestore and community map!", "success");
+    addToast(
+      enriched.aiAnalysis
+        ? "AI-Audited accessibility finding published to Cloud Database and Community Map!"
+        : "Ground accessibility report published to Cloud Database and Community Map!",
+      "success"
+    );
+    return enriched;
   };
 
-  // Community Map: Confirm / Dispute report
+  // Community Map: Confirm / Dispute report with dynamic consensus evaluation
   const voteReport = async (reportId, voteType) => {
     let updatedReport = null;
     setCommunityReports(prev => prev.map(rep => {
       if (rep.id === reportId) {
+        const nextConfirms = voteType === 'confirm' ? (rep.confirmCount || 0) + 1 : (rep.confirmCount || 0);
+        const nextDisputes = voteType === 'dispute' ? (rep.disputeCount || 0) + 1 : (rep.disputeCount || 0);
+        const newStatus = evaluateReportConsensus(nextConfirms, nextDisputes, rep.status);
+
         const item = {
           ...rep,
-          confirmCount: voteType === 'confirm' ? rep.confirmCount + 1 : rep.confirmCount,
-          disputeCount: voteType === 'dispute' ? rep.disputeCount + 1 : rep.disputeCount
+          confirmCount: nextConfirms,
+          disputeCount: nextDisputes,
+          status: newStatus
         };
         updatedReport = item;
         return item;
@@ -587,8 +611,19 @@ export function AppProvider({ children }) {
       }
     }
 
-    addToast(`Thank you! Your ${voteType} vote helps keep map data accurate.`, "success");
+    addToast(
+      voteType === 'confirm'
+        ? `Consensus confirmed (+1). Status: ${updatedReport?.status || 'Active'}`
+        : `Dispute logged. Ground accuracy verified.`,
+      "success"
+    );
   };
+
+  // Helper to get dynamic community modifier for any destination / monument
+  const getLocationCommunityImpact = (destId, destCoordinates) => {
+    return calculateLocationCommunityScore(destId, destCoordinates, communityReports);
+  };
+
 
   // Guide Booking: Create new request with Firestore sync
   const createBooking = async (bookingData) => {
@@ -741,6 +776,7 @@ export function AppProvider({ children }) {
       removeFromCart,
       addCommunityReport,
       voteReport,
+      getLocationCommunityImpact,
       switchPersona,
       toasts,
       addToast,

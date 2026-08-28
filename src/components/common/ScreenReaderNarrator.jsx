@@ -58,23 +58,11 @@ export default function ScreenReaderNarrator() {
       case 'guides':
         textToRead = "Specialized Tour Guides Directory. Connect with certified escorts trained in sign language, mobility assistance, visual narration, and neurodivergent travel support.";
         break;
-      case 'hotels':
-        textToRead = "Accessible Stays and Hotels. Verified accommodations with roll-in showers, wide doorways, emergency strobe alarms, and step-free entrances.";
-        break;
       case 'gov-services':
         textToRead = "Government Support and Schemes. Access Sugamya Bharat Abhiyan, UDID Card benefits, Divyangjan concessions, and accessible travel subsidies.";
         break;
       case 'community-map':
         textToRead = "Community Accessibility Map. Live crowdsourced reports on ramp conditions, elevator status, tactile pavements, and temporary blockages.";
-        break;
-      case 'journey-score':
-        textToRead = "Accessibility Journey Score Calculator. Evaluate your total itinerary accessibility across routes, transit, accommodation, and monument gates.";
-        break;
-      case 'store':
-        textToRead = "Accessible Travel Equipment Store. Browse foldable travel ramps, adaptive luggage, tactile canes, and portable shower chairs.";
-        break;
-      case 'trip-planner':
-        textToRead = "Personalized Trip Planner. Customise your day-by-day accessible itinerary, transport shuttles, and certified assistants.";
         break;
       default:
         // Try getting the main heading from the DOM

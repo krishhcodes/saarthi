@@ -19,15 +19,11 @@ import DashboardView from './components/views/DashboardView';
 import DestinationsView from './components/views/DestinationsView';
 import DestinationDetailView from './components/views/DestinationDetailView';
 import RoutePlannerView from './components/views/RoutePlannerView';
-import HotelsView from './components/views/HotelsView';
 import GuidesView from './components/views/GuidesView';
 import GovServicesView from './components/views/GovServicesView';
 import MultilingualVoiceView from './components/views/MultilingualVoiceView';
 import AiVerificationView from './components/views/AiVerificationView';
 import CommunityMapView from './components/views/CommunityMapView';
-import JourneyScoreView from './components/views/JourneyScoreView';
-import StoreView from './components/views/StoreView';
-import TripPlannerView from './components/views/TripPlannerView';
 import UserProfileView from './components/views/UserProfileView';
 import AdminDashboardView from './components/views/AdminDashboardView';
 import GuideDashboardView from './components/views/GuideDashboardView';
@@ -53,6 +49,8 @@ export default function App() {
       case 'profile-setup':
         return <AccessibilityProfileView />;
       case 'dashboard':
+      case 'hotels':
+      case 'store':
         return <DashboardView />;
       case 'destinations':
         return <DestinationsView />;
@@ -61,9 +59,9 @@ export default function App() {
       case 'places':
         return <PlacesView />;
       case 'route-planner':
+      case 'journey-score':
+      case 'trip-planner':
         return <RoutePlannerView />;
-      case 'hotels':
-        return <HotelsView />;
       case 'guides':
         return <GuidesView />;
       case 'gov-services':
@@ -74,12 +72,6 @@ export default function App() {
         return <AiVerificationView />;
       case 'community-map':
         return <CommunityMapView />;
-      case 'journey-score':
-        return <JourneyScoreView />;
-      case 'store':
-        return <StoreView />;
-      case 'trip-planner':
-        return <TripPlannerView />;
       case 'profile':
         return <UserProfileView />;
       case 'admin-dashboard':

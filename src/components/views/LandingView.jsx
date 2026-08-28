@@ -61,10 +61,10 @@ export default function LandingView() {
       color: "bg-teal-50 text-teal-700 border-teal-200"
     },
     {
-      icon: Activity,
-      title: "Accessibility Journey Score",
-      desc: "Proprietary multi-factor algorithm evaluating entire route, transport, stay, destination, and guide safety out of 100.",
-      tag: "Patent-Pending Innovation",
+      icon: Sparkles,
+      title: "AI Computer Vision Auditing",
+      desc: "Gemini Vision powered scanner analyzing photos of ramps, stairs, and grab bars with CPWD slope calculation.",
+      tag: "Gemini AI Vision Certified",
       color: "bg-rose-50 text-rose-700 border-rose-200"
     }
   ];

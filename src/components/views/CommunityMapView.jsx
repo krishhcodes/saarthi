@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   Map, 
@@ -15,23 +15,97 @@ import {
   ShieldCheck, 
   X,
   Layers,
-  ArrowRight
+  ArrowRight,
+  LocateFixed,
+  Navigation,
+  Check,
+  Loader2,
+  Info,
+  Building2,
+  SlidersHorizontal
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { analyzeAccessibilityPhoto, SAMPLE_VERIFICATION_IMAGES } from '../../services/aiService';
 
 // Leaflet custom marker icons by report type
 const createReportIcon = (type, status) => {
-  const bgColor = status === 'Verified' ? '#16a34a' : status === 'Community Verified' ? '#0284c7' : '#eab308';
+  const bgColor = status === 'Verified' 
+    ? '#16a34a' 
+    : status === 'Community Verified' 
+    ? '#0284c7' 
+    : status === 'Disputed Hazard'
+    ? '#dc2626'
+    : '#eab308';
+
+  const iconEmoji = 
+    type === 'Ramp' ? '🦽' : 
+    type === 'Elevator' ? '🛗' : 
+    type === 'Accessible Washroom' ? '🚻' : 
+    type === 'Accessible Transport' ? '🚌' :
+    type.includes('Obstacle') || status === 'Disputed Hazard' ? '⚠️' : '🚪';
+
   return new L.DivIcon({
     className: 'custom-map-icon',
-    html: `<div style="background-color:${bgColor};color:white;width:30px;height:30px;border-radius:9999px;display:flex;align-items:center;justify-content:center;border:2.5px solid white;box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.3);font-size:14px;">${
-      type === 'Ramp' ? '🦽' : type === 'Elevator' ? '🛗' : type.includes('Obstacle') ? '⚠️' : '📍'
-    }</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
+    html: `<div style="background-color:${bgColor};color:white;width:32px;height:32px;border-radius:9999px;display:flex;align-items:center;justify-content:center;border:2.5px solid white;box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.35);font-size:15px;cursor:pointer;transition:transform 0.15s ease;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1.0)'">${iconEmoji}</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
   });
 };
+
+const CITY_COORDINATES = {
+  'All': [27.1751, 78.0421],
+  'Agra': [27.1751, 78.0421],
+  'Delhi': [28.5244, 77.1855],
+  'Varanasi': [25.3109, 83.0107],
+  'Jaipur': [26.9855, 75.8513],
+  'Mysuru': [12.3052, 76.6552],
+  'Amritsar': [31.6200, 74.8765],
+  'Mumbai': [18.9220, 72.8347],
+  'Kolkata': [22.5448, 88.3426],
+  'Chennai': [13.0827, 80.2707],
+  'Hyderabad': [17.3616, 78.4747]
+};
+
+// Sub-component to handle map clicks and fly-to actions
+function MapController({ centerCoords, zoomLevel, onMapClick, selectedPin }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (centerCoords) {
+      map.flyTo(centerCoords, zoomLevel || 13, { duration: 1.2 });
+    }
+  }, [centerCoords, zoomLevel, map]);
+
+  useMapEvents({
+    click(e) {
+      if (onMapClick) {
+        onMapClick([e.latlng.lat, e.latlng.lng]);
+      }
+    }
+  });
+
+  return selectedPin ? (
+    <Marker 
+      position={selectedPin}
+      icon={new L.DivIcon({
+        className: 'new-pin-icon',
+        html: `<div style="background-color:#6366f1;color:white;width:36px;height:36px;border-radius:9999px;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 0 15px rgba(99,102,241,0.8);font-size:18px;animation:bounce 1s infinite;">📍</div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18]
+      })}
+    >
+      <Popup>
+        <div className="text-xs p-1">
+          <strong className="block text-indigo-700">Selected Ground Audit Pin</strong>
+          <span className="text-[11px] text-slate-600">
+            {selectedPin[0].toFixed(4)}, {selectedPin[1].toFixed(4)}
+          </span>
+        </div>
+      </Popup>
+    </Marker>
+  ) : null;
+}
 
 export default function CommunityMapView() {
   const { 
@@ -43,9 +117,13 @@ export default function CommunityMapView() {
     addToast 
   } = useApp();
 
+  const [selectedCity, setSelectedCity] = useState('All');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('All');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  const [mapCenter, setMapCenter] = useState([27.1751, 78.0421]);
+  const [mapZoom, setMapZoom] = useState(13);
+  const [selectedMapPin, setSelectedMapPin] = useState(null);
 
   // New Report Form State
   const [formTitle, setFormTitle] = useState('');
@@ -53,36 +131,100 @@ export default function CommunityMapView() {
   const [formDestId, setFormDestId] = useState('dest-1');
   const [formDesc, setFormDesc] = useState('');
   const [formPhoto, setFormPhoto] = useState('https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=600&q=80');
+  const [isScanningAi, setIsScanningAi] = useState(false);
+  const [aiAnalysisPreview, setAiAnalysisPreview] = useState(null);
 
+  // Filter reports
   const filteredReports = communityReports.filter(rep => {
+    if (selectedCity !== 'All' && rep.city && !rep.city.toLowerCase().includes(selectedCity.toLowerCase())) return false;
     if (selectedTypeFilter !== 'All' && rep.type !== selectedTypeFilter) return false;
     if (selectedStatusFilter !== 'All' && rep.status !== selectedStatusFilter) return false;
     return true;
   });
 
-  const handleSubmitNewReport = (e) => {
+  const handleCityChange = (city) => {
+    setSelectedCity(city);
+    if (CITY_COORDINATES[city]) {
+      setMapCenter(CITY_COORDINATES[city]);
+      setMapZoom(city === 'All' ? 6 : 14);
+    }
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (navigator.geolocation) {
+      addToast("Detecting your GPS location...", "info");
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords = [pos.coords.latitude, pos.coords.longitude];
+          setMapCenter(coords);
+          setMapZoom(16);
+          setSelectedMapPin(coords);
+          addToast("Centered on your current GPS location! Click anywhere to audit.", "success");
+        },
+        () => {
+          // Fallback to active destination
+          const dest = destinations[0];
+          setMapCenter(dest.coordinates);
+          setMapZoom(14);
+          addToast("Using Agra heritage center location.", "info");
+        }
+      );
+    }
+  };
+
+  const handleMapClick = (coords) => {
+    setSelectedMapPin(coords);
+    addToast(`Dropped audit pin at: ${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}. Opening submission form...`, "info");
+    setIsSubmitModalOpen(true);
+  };
+
+  const handleRunAiAudit = async () => {
+    setIsScanningAi(true);
+    try {
+      const result = await analyzeAccessibilityPhoto(formPhoto);
+      setAiAnalysisPreview(result);
+      addToast(`AI Computer Vision Audit: ${result.overallVerdict} (${result.confidenceScore}% confidence)`, "success");
+    } catch (err) {
+      addToast("Could not complete AI audit on image.", "warning");
+    } finally {
+      setIsScanningAi(false);
+    }
+  };
+
+  const handleSubmitNewReport = async (e) => {
     e.preventDefault();
     const dest = destinations.find(d => d.id === formDestId) || destinations[0];
+    const coords = selectedMapPin || [
+      dest.coordinates[0] + (Math.random() - 0.5) * 0.004,
+      dest.coordinates[1] + (Math.random() - 0.5) * 0.004
+    ];
 
-    addCommunityReport({
+    await addCommunityReport({
       destinationId: dest.id,
       destinationName: dest.name,
       city: dest.city,
-      coordinates: [
-        dest.coordinates[0] + (Math.random() - 0.5) * 0.005,
-        dest.coordinates[1] + (Math.random() - 0.5) * 0.005
-      ],
+      coordinates: coords,
       type: formType,
       title: formTitle,
       description: formDesc,
       photoUrl: formPhoto,
       contributor: `${currentUser.name} (${currentUser.role.toUpperCase()})`,
-      contributorRole: currentUser.accessibilityProfile?.primaryDisability || "Community Contributor"
-    });
+      contributorRole: currentUser.accessibilityProfile?.primaryDisability || "Community Auditor",
+      aiAnalysis: aiAnalysisPreview ? {
+        rampDetected: (aiAnalysisPreview.overallVerdict || '').toLowerCase().includes('accessible'),
+        slopeConfidence: (aiAnalysisPreview.confidenceScore || 90) / 100,
+        handrailsPresent: true,
+        estimatedIncline: aiAnalysisPreview.slopeAngle || '1:12 CPWD standard',
+        detectedFeatures: aiAnalysisPreview.detectedFeatures || [],
+        overallVerdict: aiAnalysisPreview.overallVerdict
+      } : null
+    }, formPhoto);
 
     setIsSubmitModalOpen(false);
     setFormTitle('');
     setFormDesc('');
+    setAiAnalysisPreview(null);
+    setSelectedMapPin(null);
   };
 
   return (
@@ -92,55 +234,92 @@ export default function CommunityMapView() {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-saarthi-600 uppercase tracking-wider mb-1">
             <Map className="w-3.5 h-3.5" />
-            <span>Crowd-Sourced Barrier Auditing System</span>
+            <span>Crowdsourced Ground Intelligence & Computer Vision Audits</span>
           </div>
           <h1 className="text-3xl font-black text-slate-900">
             Community Accessibility Map
           </h1>
           <p className="text-sm text-slate-600 mt-1">
-            Real-world accessibility data contributed and verified by travelers with disabilities, local NGOs, and verified guides.
+            Real-time verified ground reports, obstacles, and accessibility aids feeding directly into Route Planning and Journey Scores.
           </p>
         </div>
 
-        <button
-          onClick={() => setIsSubmitModalOpen(true)}
-          className="px-5 py-3 bg-saarthi-600 hover:bg-saarthi-700 text-white rounded-2xl font-extrabold text-xs sm:text-sm shadow-lg shadow-saarthi-500/25 flex items-center gap-2 transition-transform active:scale-95 self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Report Accessibility / Add Location</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleUseCurrentLocation}
+            className="px-4 py-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-2xl font-bold text-xs sm:text-sm shadow-sm flex items-center gap-2 transition-all active:scale-95"
+            title="Locate my GPS position on map"
+          >
+            <LocateFixed className="w-4 h-4 text-saarthi-600" />
+            <span>My GPS Location</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setSelectedMapPin(mapCenter);
+              setIsSubmitModalOpen(true);
+            }}
+            className="px-5 py-3 bg-gradient-to-r from-saarthi-600 to-sky-600 hover:from-saarthi-700 hover:to-sky-700 text-white rounded-2xl font-extrabold text-xs sm:text-sm shadow-lg shadow-saarthi-500/25 flex items-center gap-2 transition-all active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Report Ground Finding</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filter Bar */}
+      {/* Filter & Hub Jump Bar */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
+          {/* City Selector */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold">
+            <Building2 className="w-3.5 h-3.5 text-saarthi-600" />
+            <select
+              value={selectedCity}
+              onChange={(e) => handleCityChange(e.target.value)}
+              className="bg-transparent focus:outline-none cursor-pointer text-slate-800"
+            >
+              <option value="All">All Indian Hubs</option>
+              <option value="Agra">Agra, UP</option>
+              <option value="Delhi">New Delhi</option>
+              <option value="Varanasi">Varanasi, UP</option>
+              <option value="Jaipur">Jaipur, Rajasthan</option>
+              <option value="Mysuru">Mysuru, Karnataka</option>
+              <option value="Amritsar">Amritsar, Punjab</option>
+              <option value="Mumbai">Mumbai, MH</option>
+            </select>
+          </div>
+
+          {/* Type Filter */}
           <select
             value={selectedTypeFilter}
             onChange={(e) => setSelectedTypeFilter(e.target.value)}
             className="py-2 px-3 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-saarthi-500 focus:outline-none"
           >
             <option value="All">📌 All Marker Types</option>
-            <option value="Ramp">🦽 Ramps & Slopes</option>
+            <option value="Ramp">🦽 Ramps & Inclines</option>
             <option value="Elevator">🛗 Elevators & Lifts</option>
             <option value="Accessible Entrance">🚪 Accessible Entrances</option>
             <option value="Accessible Washroom">🚻 PwD Restrooms</option>
             <option value="Accessible Transport">🚌 Low-Floor Transport</option>
-            <option value="Obstacle / Blocked Path">⚠️ Obstacles & Blocked Paths</option>
+            <option value="Obstacle / Blocked Path">⚠️ Obstacles & Hazards</option>
           </select>
 
+          {/* Status Filter */}
           <select
             value={selectedStatusFilter}
             onChange={(e) => setSelectedStatusFilter(e.target.value)}
             className="py-2 px-3 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-saarthi-500 focus:outline-none"
           >
-            <option value="All">✓ All Verification Statuses</option>
+            <option value="All">✓ All Consensus Statuses</option>
             <option value="Verified">🟢 Verified by Authorities / ASI</option>
-            <option value="Community Verified">🔵 Community Verified (20+ Votes)</option>
+            <option value="Community Verified">🔵 Community Verified (Consensus)</option>
             <option value="Needs Verification">🟡 Needs Verification</option>
+            <option value="Disputed Hazard">🔴 Disputed / Hazard Flagged</option>
           </select>
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-semibold">
+        {/* Legend */}
+        <div className="flex items-center gap-3 text-xs font-semibold flex-wrap">
           <span className="flex items-center gap-1 text-emerald-700">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span> Verified
           </span>
@@ -148,33 +327,43 @@ export default function CommunityMapView() {
             <span className="w-2.5 h-2.5 rounded-full bg-saarthi-600"></span> Community Verified
           </span>
           <span className="flex items-center gap-1 text-amber-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Needs Verification
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Needs Review
+          </span>
+          <span className="flex items-center gap-1 text-red-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span> Hazard
           </span>
         </div>
       </div>
 
-      {/* Main Grid: Interactive Full-Scale Map (7 cols) + Reports Stream (5 cols) */}
+      {/* Main Grid: Interactive Map (7 cols) + Live Audits Stream (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left: Leaflet Live Map */}
-        <div className="lg:col-span-7 bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-md flex flex-col min-h-[550px]">
-          <div className="p-4 bg-slate-900 text-white flex items-center justify-between text-xs">
+        {/* Left: Leaflet Live Map with Click-to-Pin */}
+        <div className="lg:col-span-7 bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-md flex flex-col min-h-[580px]">
+          <div className="p-4 bg-slate-950 text-white flex items-center justify-between text-xs">
             <span className="font-bold flex items-center gap-2">
               <MapPin className="w-4 h-4 text-saarthi-400" />
               <span>Live India Accessibility Audit Grid ({filteredReports.length} pins)</span>
             </span>
-            <span className="text-slate-400">Click any pin to inspect & vote</span>
+            <span className="text-saarthi-300 font-medium">💡 Click anywhere on map to drop an audit pin</span>
           </div>
 
           <div className="flex-1 w-full relative z-0 isolate">
             <MapContainer
-              center={[27.1751, 78.0421]}
-              zoom={13}
+              center={mapCenter}
+              zoom={mapZoom}
               scrollWheelZoom={false}
-              style={{ height: '100%', minHeight: '500px', width: '100%' }}
+              style={{ height: '100%', minHeight: '520px', width: '100%' }}
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+
+              <MapController 
+                centerCoords={mapCenter} 
+                zoomLevel={mapZoom} 
+                onMapClick={handleMapClick}
+                selectedPin={selectedMapPin}
               />
 
               {filteredReports.map((rep) => (
@@ -184,20 +373,45 @@ export default function CommunityMapView() {
                   icon={createReportIcon(rep.type, rep.status)}
                 >
                   <Popup>
-                    <div className="space-y-2 max-w-[240px]">
-                      <div className="flex items-center justify-between">
+                    <div className="space-y-2 max-w-[250px] p-0.5">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-800">
                           {rep.type}
                         </span>
-                        <span className="text-[10px] font-bold text-emerald-700">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          rep.status === 'Verified' ? 'bg-emerald-100 text-emerald-800' :
+                          rep.status === 'Community Verified' ? 'bg-sky-100 text-sky-800' :
+                          rep.status === 'Disputed Hazard' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
                           {rep.status}
                         </span>
                       </div>
+
                       <h4 className="font-bold text-xs text-slate-900 leading-snug">{rep.title}</h4>
-                      <p className="text-[11px] text-slate-600">{rep.description}</p>
-                      <div className="pt-2 border-t flex justify-between items-center text-[10px]">
+                      <p className="text-[11px] text-slate-600 leading-relaxed">{rep.description}</p>
+                      
+                      {rep.aiAnalysis && (
+                        <div className="p-1.5 bg-emerald-50 rounded-lg text-[10px] text-emerald-900 border border-emerald-200">
+                          <strong>AI Audit:</strong> {rep.aiAnalysis.estimatedIncline || 'Step-Free'} ({Math.round((rep.aiAnalysis.slopeConfidence || 0.9) * 100)}% confidence)
+                        </div>
+                      )}
+
+                      <div className="pt-2 border-t flex justify-between items-center text-[10px] text-slate-500">
                         <span>By {rep.contributor}</span>
-                        <span className="font-bold text-emerald-600">✓ {rep.confirmCount}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button 
+                            onClick={() => voteReport(rep.id, 'confirm')}
+                            className="text-emerald-700 font-bold hover:underline"
+                          >
+                            ✓ {rep.confirmCount || 1}
+                          </button>
+                          <button 
+                            onClick={() => voteReport(rep.id, 'dispute')}
+                            className="text-red-700 font-bold hover:underline"
+                          >
+                            ✗ {rep.disputeCount || 0}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </Popup>
@@ -207,103 +421,163 @@ export default function CommunityMapView() {
           </div>
         </div>
 
-        {/* Right: Community Reports Stream & Voting */}
+        {/* Right: Crowdsourced Contributions Stream & Live Voting */}
         <div className="lg:col-span-5 space-y-4">
-          <h3 className="font-extrabold text-base text-slate-900">
-            Crowdsourced Contributions Stream
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-base text-slate-900">
+              Live Ground Contributions ({filteredReports.length})
+            </h3>
+            <span className="text-xs font-semibold text-saarthi-600 bg-saarthi-50 px-2.5 py-1 rounded-full border border-saarthi-200">
+              ⚡ Real-Time Cloud Synced
+            </span>
+          </div>
 
-          <div className="space-y-3.5 max-h-[550px] overflow-y-auto pr-1">
-            {filteredReports.map((rep) => (
-              <div
-                key={rep.id}
-                className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold text-saarthi-600 uppercase tracking-wider">
-                      {rep.type} • {rep.destinationName}
+          <div className="space-y-3.5 max-h-[580px] overflow-y-auto pr-1">
+            {filteredReports.map((rep) => {
+              const totalVotes = (rep.confirmCount || 1) + (rep.disputeCount || 0);
+              const confirmPct = Math.round(((rep.confirmCount || 1) / totalVotes) * 100);
+
+              return (
+                <div
+                  key={rep.id}
+                  className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3 hover:border-saarthi-300 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-saarthi-600 uppercase tracking-wider block">
+                        {rep.type} • {rep.destinationName} ({rep.city})
+                      </span>
+                      <h4 className="font-bold text-sm text-slate-900">{rep.title}</h4>
+                    </div>
+
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap border ${
+                      rep.status === 'Verified'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        : rep.status === 'Community Verified'
+                        ? 'bg-saarthi-50 text-saarthi-800 border-saarthi-300'
+                        : rep.status === 'Disputed Hazard'
+                        ? 'bg-red-50 text-red-800 border-red-300 font-extrabold'
+                        : 'bg-amber-50 text-amber-800 border-amber-300'
+                    }`}>
+                      {rep.status}
                     </span>
-                    <h4 className="font-bold text-sm text-slate-900">{rep.title}</h4>
                   </div>
 
-                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap border ${
-                    rep.status === 'Verified'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                      : rep.status === 'Community Verified'
-                      ? 'bg-saarthi-50 text-saarthi-800 border-saarthi-300'
-                      : 'bg-amber-50 text-amber-800 border-amber-300'
-                  }`}>
-                    {rep.status}
-                  </span>
-                </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {rep.description}
+                  </p>
 
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {rep.description}
-                </p>
+                  {/* AI Vision Spec Sheet */}
+                  {rep.aiAnalysis && (
+                    <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl p-3 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold flex items-center gap-1 text-emerald-400">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Computer Vision Certified</span>
+                        </span>
+                        <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.2 rounded font-mono text-[10px]">
+                          Confidence: {Math.round((rep.aiAnalysis.slopeConfidence || 0.9) * 100)}%
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300 pt-1 border-t border-slate-700">
+                        <span>Slope: <strong>{rep.aiAnalysis.estimatedIncline || '1:12 Incline'}</strong></span>
+                        <span>Handrails: <strong>{rep.aiAnalysis.handrailsPresent ? 'Present' : 'None'}</strong></span>
+                      </div>
+                    </div>
+                  )}
 
-                {rep.photoUrl && (
-                  <div className="h-32 rounded-2xl overflow-hidden border border-slate-100">
-                    <img src={rep.photoUrl} alt="" className="w-full h-full object-cover" />
+                  {rep.photoUrl && (
+                    <div className="h-32 rounded-2xl overflow-hidden border border-slate-100 relative group">
+                      <img src={rep.photoUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <span className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded backdrop-blur-sm">
+                        Ground Photo Evidence
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Consensus Bar */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500">
+                      <span>Community Consensus: {confirmPct}% Verified</span>
+                      <span className="text-saarthi-600 font-bold">{rep.scoreImpact || '+5 Pts Route Score'}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                      <div style={{ width: `${confirmPct}%` }} className="bg-emerald-500 h-full"></div>
+                      <div style={{ width: `${100 - confirmPct}%` }} className="bg-red-400 h-full"></div>
+                    </div>
                   </div>
-                )}
-
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                  <span>By <strong>{rep.contributor}</strong> ({rep.date})</span>
 
                   {/* Voting Actions */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => voteReport(rep.id, 'confirm')}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1 transition-colors"
-                      title="Confirm this accessibility info is accurate"
-                    >
-                      <ThumbsUp className="w-3.5 h-3.5" />
-                      <span>{rep.confirmCount}</span>
-                    </button>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span>By <strong>{rep.contributor}</strong> ({rep.date})</span>
 
-                    <button
-                      onClick={() => voteReport(rep.id, 'dispute')}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 font-bold text-xs flex items-center gap-1 transition-colors"
-                      title="Dispute / Report outdated"
-                    >
-                      <ThumbsDown className="w-3.5 h-3.5" />
-                      <span>{rep.disputeCount}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => voteReport(rep.id, 'confirm')}
+                        className="px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                        title="Confirm this accessibility finding (+1)"
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                        <span>Confirm ({rep.confirmCount || 1})</span>
+                      </button>
+
+                      <button
+                        onClick={() => voteReport(rep.id, 'dispute')}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-600 font-bold text-xs flex items-center gap-1 transition-all active:scale-95"
+                        title="Dispute / Flag inaccuracy"
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                        <span>Dispute ({rep.disputeCount || 0})</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Add New Report Modal */}
+      {/* Add New Report Modal with Integrated Gemini AI Vision Scanner */}
       {isSubmitModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative max-h-[90vh] overflow-y-auto">
             <button
-              onClick={() => setIsSubmitModalOpen(false)}
+              onClick={() => {
+                setIsSubmitModalOpen(false);
+                setAiAnalysisPreview(null);
+              }}
               className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100"
               aria-label="Close modal"
             >
               <X className="w-6 h-6" />
             </button>
 
-            <h3 className="text-xl font-black text-slate-900 mb-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-saarthi-600 uppercase tracking-wider mb-1">
+              <Sparkles className="w-4 h-4 text-saarthi-500" />
+              <span>Ground Barrier & Ramp Auditing</span>
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 mb-1">
               Submit Accessibility Report
             </h3>
             <p className="text-xs text-slate-500 mb-4">
-              Help fellow travelers by contributing verified ground observations.
+              Ground observations directly update the Route Planner, Journey Score, and AI Vision Catalog.
             </p>
+
+            {selectedMapPin && (
+              <div className="mb-4 p-3 bg-indigo-50 rounded-2xl border border-indigo-200 text-xs text-indigo-900 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span>Pinned Location: <strong>{selectedMapPin[0].toFixed(4)}, {selectedMapPin[1].toFixed(4)}</strong></span>
+              </div>
+            )}
 
             <form onSubmit={handleSubmitNewReport} className="space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Associated Destination</label>
+                <label className="block font-bold text-slate-700 mb-1">Associated Heritage Hub</label>
                 <select
                   value={formDestId}
                   onChange={(e) => setFormDestId(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-medium"
+                  className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-medium text-xs"
                 >
                   {destinations.map(d => (
                     <option key={d.id} value={d.id}>{d.name} ({d.city})</option>
@@ -312,18 +586,18 @@ export default function CommunityMapView() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Report Category</label>
+                <label className="block font-bold text-slate-700 mb-1">Accessibility Category</label>
                 <select
                   value={formType}
                   onChange={(e) => setFormType(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-medium"
+                  className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-medium text-xs"
                 >
-                  <option value="Ramp">🦽 Ramp / Incline</option>
-                  <option value="Elevator">🛗 Elevator / Lift</option>
-                  <option value="Accessible Entrance">🚪 Accessible Entrance / Zero Step</option>
-                  <option value="Accessible Washroom">🚻 PwD Washroom</option>
-                  <option value="Accessible Transport">🚌 Low-Floor Transit / Buggy</option>
-                  <option value="Obstacle / Blocked Path">⚠️ Obstacle / Damaged Ramp</option>
+                  <option value="Ramp">🦽 Ramp / Incline Slope</option>
+                  <option value="Elevator">🛗 Elevator / Hydraulic Lift</option>
+                  <option value="Accessible Entrance">🚪 Accessible Gate / Zero Step Turnstile</option>
+                  <option value="Accessible Washroom">🚻 Dedicated PwD Restroom</option>
+                  <option value="Accessible Transport">🚌 Low-Floor Electric Buggy / Shuttle</option>
+                  <option value="Obstacle / Blocked Path">⚠️ Obstacle / Damaged Ramp / Step Hazard</option>
                 </select>
               </div>
 
@@ -334,8 +608,8 @@ export default function CommunityMapView() {
                   required
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder="e.g. New anti-skid ramp installed at West Gate"
-                  className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-medium"
+                  placeholder="e.g. New anti-skid ramp installed at West Gate with dual handrails"
+                  className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-medium text-xs"
                 />
               </div>
 
@@ -346,26 +620,60 @@ export default function CommunityMapView() {
                   rows={3}
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
-                  placeholder="Describe slope, width, surface grip, presence of handrails, or obstacles..."
-                  className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-medium"
+                  placeholder="Describe slope inclination, door clearance, surface traction, presence of handrails..."
+                  className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-medium text-xs"
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Photo Verification URL</label>
+              {/* Photo & Gemini Vision AI Scanner */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-saarthi-600" />
+                    <span>Photo Evidence & AI Vision Audit</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleRunAiAudit}
+                    disabled={isScanningAi}
+                    className="px-3 py-1.5 bg-saarthi-600 hover:bg-saarthi-700 text-white rounded-xl font-bold text-[11px] flex items-center gap-1 transition-all shadow-sm disabled:opacity-50"
+                  >
+                    {isScanningAi ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-yellow-300" />}
+                    <span>{isScanningAi ? "Auditing..." : "Audit with AI Vision"}</span>
+                  </button>
+                </div>
+
                 <input
                   type="text"
                   value={formPhoto}
                   onChange={(e) => setFormPhoto(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px]"
+                  placeholder="Photo URL (e.g. Unsplash or direct link)"
+                  className="w-full p-2.5 bg-white rounded-xl border border-slate-200 font-mono text-[11px]"
                 />
+
+                {/* AI Analysis Preview if audited */}
+                {aiAnalysisPreview && (
+                  <div className="p-3 bg-slate-900 text-white rounded-xl text-xs space-y-2 animate-in fade-in">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-emerald-400">✓ AI Classification: {aiAnalysisPreview.overallVerdict}</span>
+                      <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono text-[10px]">
+                        {aiAnalysisPreview.confidenceScore}% Confidence
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">{aiAnalysisPreview.recommendation}</p>
+                    <span className="inline-block text-[10px] font-bold bg-saarthi-500/30 text-saarthi-300 px-2 py-0.5 rounded">
+                      Incline: {aiAnalysisPreview.slopeAngle}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3.5 bg-saarthi-600 hover:bg-saarthi-700 text-white rounded-xl font-bold text-sm shadow-md transition-colors"
+                className="w-full py-3.5 bg-gradient-to-r from-saarthi-600 to-sky-600 hover:from-saarthi-700 hover:to-sky-700 text-white rounded-xl font-bold text-sm shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2"
               >
-                Publish Report to Live Community Map
+                <span>Publish to Cloud Database & Live Community Map</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           </div>
