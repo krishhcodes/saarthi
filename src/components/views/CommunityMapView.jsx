@@ -165,7 +165,7 @@ export default function CommunityMapView() {
             <span className="text-slate-400">Click any pin to inspect & vote</span>
           </div>
 
-          <div className="flex-1 w-full relative z-10">
+          <div className="flex-1 w-full relative z-0 isolate">
             <MapContainer
               center={[27.1751, 78.0421]}
               zoom={13}

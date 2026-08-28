@@ -181,7 +181,7 @@ export default function RoutePlannerView() {
             </span>
           </div>
 
-          <div className="flex-1 w-full relative z-10">
+          <div className="flex-1 w-full relative z-0 isolate">
             <MapContainer
               center={currentRoute.coordinates[0]}
               zoom={15}

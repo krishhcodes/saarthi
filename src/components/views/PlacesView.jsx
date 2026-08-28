@@ -1,17 +1,20 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   Search, MapPin, ChevronRight, ChevronDown, ChevronUp,
   AlertTriangle, CheckCircle, XCircle, HelpCircle, Loader2,
-  Star, ExternalLink, Flag, X, RefreshCw, Info, Shield
+  Star, ExternalLink, Flag, X, RefreshCw, Info, Shield, Navigation,
+  Layers, Footprints, DoorOpen, Sparkles, Bath
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
   PLACES_CATALOG, STATUS_THRESHOLDS, DISABILITY_KEY,
   evaluatePlace, searchSeededPlaces, searchPlaceWithGemini
 } from '../../services/placesService';
+import { fetchFootways, getFootwayStyle } from '../../services/osmFootwayService';
+import { fetchWikimediaPhoto } from '../../services/wikimediaService';
 
 // Fix leaflet default icon path issue in Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -87,10 +90,77 @@ function SourceBadge({ sourceType }) {
   );
 }
 
+// Categorize visitor points into 3 clean groups: Entrance Gates, Inner Attractions, and Restrooms & Facilities
+function categorizeVisitorPoints(points = []) {
+  const entrances = [];
+  const attractions = [];
+  const facilities = [];
+
+  points.forEach(point => {
+    const type = point.type?.toLowerCase() || '';
+    const name = point.name?.toLowerCase() || '';
+
+    // 1. Restrooms & Other Facilities
+    const isFacility = type === 'restroom' || type === 'transit' || type === 'facility' ||
+      name.includes('restroom') || name.includes('toilet') || name.includes('washroom') ||
+      name.includes('cloakroom') || name.includes('elevator') || name.includes('lift') ||
+      name.includes('shuttle') || name.includes('cart') || name.includes('parking') ||
+      name.includes('water') || name.includes('medical') || name.includes('wheelchair');
+
+    if (isFacility) {
+      facilities.push(point);
+      return;
+    }
+
+    // 2. Entrance Gates
+    const isEntrance = type === 'entrance' ||
+      name.includes('gate') || name.includes('entry') || name.includes('entrance') ||
+      name.includes('ticket') || name.includes('turnstile');
+
+    if (isEntrance) {
+      entrances.push(point);
+      return;
+    }
+
+    // 3. Inner Attractions (default)
+    attractions.push(point);
+  });
+
+  return { entrances, attractions, facilities };
+}
+
 export default function PlacesView() {
-  const { userProfile, addToast } = useApp();
+  const { userProfile, addToast, navigateTo, setSelectedDestination, destinations } = useApp();
   const primaryDisability = userProfile?.primaryDisability || 'Mobility / Wheelchair';
   const disabilityKey = DISABILITY_KEY[primaryDisability] || 'mobility';
+
+  const handleNavigateToRoute = (point = null) => {
+    // Sync current destination if available
+    if (evaluatedPlace) {
+      const match = destinations?.find(d => 
+        d.id === evaluatedPlace.id || 
+        d.name?.toLowerCase().includes(evaluatedPlace.name?.toLowerCase()) ||
+        evaluatedPlace.name?.toLowerCase().includes(d.name?.toLowerCase())
+      );
+      if (match) {
+        setSelectedDestination(match);
+      } else {
+        setSelectedDestination({
+          id: evaluatedPlace.id,
+          name: evaluatedPlace.name,
+          city: evaluatedPlace.city,
+          state: evaluatedPlace.state || evaluatedPlace.city,
+          coverImage: evaluatedPlace.coverImage,
+          lat: point?.lat || evaluatedPlace.lat,
+          lng: point?.lng || evaluatedPlace.lng,
+          accessibilityScore: evaluatedPlace.overallScore || 90
+        });
+      }
+    }
+    const pointLabel = point?.name ? ` to ${point.name}` : '';
+    addToast?.(`Opening Route Navigator${pointLabel}...`, 'info');
+    navigateTo('route-planner');
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(PLACES_CATALOG);
@@ -104,6 +174,11 @@ export default function PlacesView() {
   const [reportPointId, setReportPointId] = useState(null);
   const [reportText, setReportText] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [showPathways, setShowPathways] = useState(true);
+  const [osmFootways, setOsmFootways] = useState([]);
+  const [isLoadingFootways, setIsLoadingFootways] = useState(false);
+  const [footwayError, setFootwayError] = useState(false);
+  const [loadedImage, setLoadedImage] = useState(null);
   const [mapCenter, setMapCenter] = useState([20.5937, 78.9629]);
   const [mapZoom, setMapZoom] = useState(5);
   const searchTimeout = useRef(null);
@@ -114,13 +189,27 @@ export default function PlacesView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-evaluate when disability changes (persona switch)
+  // Re-evaluate and fetch footways when selectedPlace or persona changes
   useEffect(() => {
     if (selectedPlace) {
+      setIsLoading(true);
       const ev = evaluatePlace(selectedPlace, primaryDisability);
       setEvaluatedPlace(ev);
+      setIsLoading(false);
+
+      // Re-fetch footways with new disability key for context-aware coloring
+      setIsLoadingFootways(true);
+      setFootwayError(false);
+      fetchFootways(selectedPlace, disabilityKey).then(fw => {
+        setOsmFootways(fw);
+        setIsLoadingFootways(false);
+        if (fw.length === 0) setFootwayError(true);
+      }).catch(() => {
+        setIsLoadingFootways(false);
+        setFootwayError(true);
+      });
     }
-  }, [primaryDisability, selectedPlace]);
+  }, [primaryDisability, selectedPlace, disabilityKey]);
 
   const handleSearchChange = (e) => {
     const q = e.target.value;
@@ -143,7 +232,22 @@ export default function PlacesView() {
     try {
       const result = await searchPlaceWithGemini(q, primaryDisability);
       if (result) {
+        // Immediately show result with placeholder image
         setSearchResults([result]);
+        // Async fetch a real Wikimedia photo and patch it in
+        fetchWikimediaPhoto(result.name, result.city).then(photoUrl => {
+          if (photoUrl) {
+            setSearchResults(prev =>
+              prev.map(p => p.id === result.id ? { ...p, coverImage: photoUrl } : p)
+            );
+            setSelectedPlace(prev =>
+              prev?.id === result.id ? { ...prev, coverImage: photoUrl } : prev
+            );
+            setEvaluatedPlace(prev =>
+              prev?.id === result.id ? { ...prev, coverImage: photoUrl } : prev
+            );
+          }
+        });
       }
     } catch {
       addToast?.('Could not fetch place info. Please check your connection.', 'error');
@@ -153,18 +257,14 @@ export default function PlacesView() {
   };
 
   const handleSelectPlace = useCallback((place) => {
-    setIsLoading(true);
     setSelectedPlace(place);
     setSelectedPointId(null);
     setExpandedEvidence(null);
+    setOsmFootways([]);
+    setFootwayError(false);
     setMapCenter([place.lat, place.lng]);
-    setMapZoom(15);
-    setTimeout(() => {
-      const ev = evaluatePlace(place, primaryDisability);
-      setEvaluatedPlace(ev);
-      setIsLoading(false);
-    }, 300);
-  }, [primaryDisability]);
+    setMapZoom(16);
+  }, []);
 
   const handleSelectPoint = (pointId) => {
     setSelectedPointId(prev => prev === pointId ? null : pointId);
@@ -184,6 +284,10 @@ export default function PlacesView() {
 
   const selectedPoint = evaluatedPlace?.evaluatedPoints?.find(p => p.id === selectedPointId);
   const overallCfg = STATUS_THRESHOLDS[evaluatedPlace?.overallStatus] || STATUS_THRESHOLDS.unknown;
+
+  const { entrances, attractions, facilities } = useMemo(() => {
+    return categorizeVisitorPoints(evaluatedPlace?.evaluatedPoints || []);
+  }, [evaluatedPlace?.evaluatedPoints]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -228,16 +332,30 @@ export default function PlacesView() {
                   onClick={() => { handleSelectPlace(place); setSearchQuery(''); setSearchResults(PLACES_CATALOG); }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-saarthi-50 transition-colors border-b border-slate-100 last:border-0"
                 >
-                  <MapPin className="w-4 h-4 text-saarthi-500 shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{place.name}</p>
-                    <p className="text-xs text-slate-500">{place.city}</p>
+                  {place._isGeminiGenerated && place.coverImage ? (
+                    <img
+                      src={place.coverImage}
+                      alt={place.name}
+                      className="w-10 h-10 rounded-lg object-cover shrink-0 border border-slate-200"
+                    />
+                  ) : (
+                    <MapPin className="w-4 h-4 text-saarthi-500 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{place.name}</p>
+                    <p className="text-xs text-slate-500 truncate">{place.city}</p>
                   </div>
                   {place._isGeminiGenerated && (
-                    <span className="ml-auto text-[9px] font-bold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded uppercase">AI</span>
+                    <div className="flex flex-col items-end gap-0.5 shrink-0">
+                      <span className="text-[9px] font-bold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded uppercase">AI</span>
+                      {place.coverImage && (
+                        <span className="text-[8px] font-semibold text-slate-400">📷 Wiki</span>
+                      )}
+                    </div>
                   )}
                 </button>
               ))}
+
             </div>
           )}
           {searchQuery && searchResults.length === 0 && !isGeminiSearching && (
@@ -282,13 +400,24 @@ export default function PlacesView() {
             <div className="lg:col-span-2 flex flex-col gap-4">
               {/* Place Header Card */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="relative h-36 overflow-hidden">
-                  <img
-                    src={evaluatedPlace.coverImage}
-                    alt={evaluatedPlace.name}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent" />
+                <div className="relative h-36 overflow-hidden bg-slate-200">
+                  {/* Shimmer placeholder shown only until image loads */}
+                  {(!evaluatedPlace.coverImage || loadedImage !== evaluatedPlace.coverImage) && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 animate-pulse" />
+                  )}
+                  {evaluatedPlace.coverImage && (
+                    <img
+                      key={evaluatedPlace.coverImage}
+                      src={evaluatedPlace.coverImage}
+                      alt={evaluatedPlace.name}
+                      className={`w-full h-full object-cover transition-opacity duration-300 ${
+                        loadedImage === evaluatedPlace.coverImage ? 'opacity-100' : 'opacity-0'
+                      }`}
+                      onLoad={() => setLoadedImage(evaluatedPlace.coverImage)}
+                      onError={() => setLoadedImage(evaluatedPlace.coverImage)}
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent pointer-events-none" />
                   <div className="absolute bottom-3 left-4 text-white">
                     <p className="text-xs text-white/70 font-medium">{evaluatedPlace.city}</p>
                     <h2 className="text-lg font-black leading-tight">{evaluatedPlace.name}</h2>
@@ -300,7 +429,20 @@ export default function PlacesView() {
                     <StatusIcon status={evaluatedPlace.overallStatus} size={13} />
                     {overallCfg.label}
                   </div>
+                  {/* Wikimedia attribution badge */}
+                  {evaluatedPlace._isGeminiGenerated && evaluatedPlace.coverImage && (
+                    <a
+                      href={`https://commons.wikimedia.org/wiki/Special:Search/${encodeURIComponent(evaluatedPlace.name)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute bottom-3 right-3 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/50 text-white/80 hover:bg-black/70 transition-colors"
+                      title="Photo from Wikimedia Commons"
+                    >
+                      <span>📷</span> Wikimedia
+                    </a>
+                  )}
                 </div>
+
 
                 {/* Score Bar */}
                 <div className="px-4 py-3 border-t border-slate-100">
@@ -338,50 +480,152 @@ export default function PlacesView() {
                 </div>
               </div>
 
-              {/* Visitor Points List */}
+              {/* Visitor Points List (Grouped into Gates & Campus POIs) */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-800">Visitor Points</h3>
+                  <h3 className="text-sm font-bold text-slate-800">Campus Gates & Visitor Points</h3>
                   <span className="text-[10px] text-slate-400 font-medium">{evaluatedPlace.evaluatedPoints.length} locations</span>
                 </div>
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-10 gap-2 text-slate-400">
                       <Loader2 className="w-5 h-5 animate-spin" />
                       <span className="text-sm">Evaluating accessibility…</span>
                     </div>
                   ) : (
-                    evaluatedPlace.evaluatedPoints.map(point => {
-                      const ev = point.evaluation;
-                      const cfg = STATUS_THRESHOLDS[ev.status] || STATUS_THRESHOLDS.unknown;
-                      const isSelected = selectedPointId === point.id;
-                      return (
-                        <button
-                          key={point.id}
-                          onClick={() => handleSelectPoint(point.id)}
-                          className={`w-full text-left px-4 py-3 transition-all ${
-                            isSelected ? 'bg-saarthi-50 border-l-4 border-l-saarthi-500' : 'hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl shrink-0">{point.icon}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-slate-800 truncate">{point.name}</p>
-                              <ConfidenceBar confidence={ev.confidence} status={ev.status} />
+                    <>
+                      {/* 1. Entrance Gates Section */}
+                      {entrances.length > 0 && (
+                        <div>
+                          <div className="bg-slate-50/90 px-3.5 py-1.5 flex items-center justify-between text-[11px] font-bold text-slate-600 uppercase tracking-wider sticky top-0 z-10 backdrop-blur-sm border-b border-slate-200">
+                            <div className="flex items-center gap-1.5">
+                              <DoorOpen className="w-3.5 h-3.5 text-saarthi-600" />
+                              <span>Entrance Gates</span>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <span
-                                className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                                style={{ color: cfg.color, backgroundColor: cfg.bg, borderColor: cfg.border }}
-                              >
-                                {cfg.emoji} {cfg.label}
-                              </span>
-                              {isSelected ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-                            </div>
+                            <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full">{entrances.length}</span>
                           </div>
-                        </button>
-                      );
-                    })
+                          {entrances.map(point => {
+                            const ev = point.evaluation;
+                            const cfg = STATUS_THRESHOLDS[ev.status] || STATUS_THRESHOLDS.unknown;
+                            const isSelected = selectedPointId === point.id;
+                            return (
+                              <button
+                                key={point.id}
+                                onClick={() => handleSelectPoint(point.id)}
+                                className={`w-full text-left px-4 py-3 transition-all border-b border-slate-100 last:border-0 ${
+                                  isSelected ? 'bg-saarthi-50 border-l-4 border-l-saarthi-500' : 'hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xl shrink-0">{point.icon}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-slate-800 truncate">{point.name}</p>
+                                    <ConfidenceBar confidence={ev.confidence} status={ev.status} />
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span
+                                      className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                      style={{ color: cfg.color, backgroundColor: cfg.bg, borderColor: cfg.border }}
+                                    >
+                                      {cfg.emoji} {cfg.label}
+                                    </span>
+                                    {isSelected ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* 2. Inner Attractions Section */}
+                      {attractions.length > 0 && (
+                        <div>
+                          <div className="bg-slate-50/90 px-3.5 py-1.5 flex items-center justify-between text-[11px] font-bold text-slate-600 uppercase tracking-wider sticky top-0 z-10 backdrop-blur-sm border-t border-b border-slate-200">
+                            <div className="flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Inner Attractions</span>
+                            </div>
+                            <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full">{attractions.length}</span>
+                          </div>
+                          {attractions.map(point => {
+                            const ev = point.evaluation;
+                            const cfg = STATUS_THRESHOLDS[ev.status] || STATUS_THRESHOLDS.unknown;
+                            const isSelected = selectedPointId === point.id;
+                            return (
+                              <button
+                                key={point.id}
+                                onClick={() => handleSelectPoint(point.id)}
+                                className={`w-full text-left px-4 py-3 transition-all border-b border-slate-100 last:border-0 ${
+                                  isSelected ? 'bg-saarthi-50 border-l-4 border-l-saarthi-500' : 'hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xl shrink-0">{point.icon}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-slate-800 truncate">{point.name}</p>
+                                    <ConfidenceBar confidence={ev.confidence} status={ev.status} />
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span
+                                      className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                      style={{ color: cfg.color, backgroundColor: cfg.bg, borderColor: cfg.border }}
+                                    >
+                                      {cfg.emoji} {cfg.label}
+                                    </span>
+                                    {isSelected ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* 3. Restrooms & Other Facilities Section */}
+                      {facilities.length > 0 && (
+                        <div>
+                          <div className="bg-slate-50/90 px-3.5 py-1.5 flex items-center justify-between text-[11px] font-bold text-slate-600 uppercase tracking-wider sticky top-0 z-10 backdrop-blur-sm border-t border-b border-slate-200">
+                            <div className="flex items-center gap-1.5">
+                              <Bath className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Restrooms & Facilities</span>
+                            </div>
+                            <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full">{facilities.length}</span>
+                          </div>
+                          {facilities.map(point => {
+                            const ev = point.evaluation;
+                            const cfg = STATUS_THRESHOLDS[ev.status] || STATUS_THRESHOLDS.unknown;
+                            const isSelected = selectedPointId === point.id;
+                            return (
+                              <button
+                                key={point.id}
+                                onClick={() => handleSelectPoint(point.id)}
+                                className={`w-full text-left px-4 py-3 transition-all border-b border-slate-100 last:border-0 ${
+                                  isSelected ? 'bg-saarthi-50 border-l-4 border-l-saarthi-500' : 'hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xl shrink-0">{point.icon}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-slate-800 truncate">{point.name}</p>
+                                    <ConfidenceBar confidence={ev.confidence} status={ev.status} />
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span
+                                      className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                      style={{ color: cfg.color, backgroundColor: cfg.bg, borderColor: cfg.border }}
+                                    >
+                                      {cfg.emoji} {cfg.label}
+                                    </span>
+                                    {isSelected ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -389,8 +633,35 @@ export default function PlacesView() {
 
             {/* RIGHT: Map + Detail Panel */}
             <div className="lg:col-span-3 flex flex-col gap-4">
-              {/* Leaflet Map */}
-              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm" style={{ height: '340px' }}>
+              {/* Leaflet Map with Campus Accessibility Network */}
+              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative z-0 isolate" style={{ height: '370px' }}>
+                {/* Map Floating 3-Color Legend */}
+                <div className="absolute top-3 right-3 z-[400] flex flex-col items-end gap-2">
+                  {isLoadingFootways && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 shadow-md text-slate-600">
+                      <Loader2 className="w-3 h-3 animate-spin text-emerald-500" />
+                      <span>Loading walkways…</span>
+                    </div>
+                  )}
+                  {footwayError && !isLoadingFootways && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 border border-amber-200 shadow-md text-amber-700">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>Walkway data unavailable offline</span>
+                    </div>
+                  )}
+                  <div className="bg-white/95 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-slate-200 shadow-sm text-[10px] flex items-center gap-3">
+                    <span className="flex items-center gap-1 text-green-700 font-bold">
+                      <span className="w-4 h-0.5 bg-green-500 inline-block rounded"></span> Accessible
+                    </span>
+                    <span className="flex items-center gap-1 text-amber-700 font-bold">
+                      <span className="w-4 h-0.5 bg-amber-400 inline-block rounded" style={{borderTop: '2px dashed #f59e0b', background: 'none'}}></span> Partial
+                    </span>
+                    <span className="flex items-center gap-1 text-red-700 font-bold">
+                      <span className="w-4 h-0.5 bg-red-500 inline-block rounded" style={{borderTop: '2px dashed #ef4444', background: 'none'}}></span> Barrier
+                    </span>
+                  </div>
+                </div>
+
                 <MapContainer
                   center={mapCenter}
                   zoom={mapZoom}
@@ -403,6 +674,54 @@ export default function PlacesView() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   />
+
+                  {/* OSM Footway Network — Real surveyed pedestrian paths from Overpass API */}
+                  {osmFootways.map(footway => {
+                    const isNearSelected = selectedPointId && evaluatedPlace?.evaluatedPoints?.some(pt =>
+                      pt.id === selectedPointId &&
+                      footway.positions.some(pos =>
+                        Math.abs(pos[0] - pt.lat) < 0.0008 && Math.abs(pos[1] - pt.lng) < 0.0008
+                      )
+                    );
+                    const style = getFootwayStyle(footway.status, isNearSelected);
+                    return (
+                      <React.Fragment key={footway.id}>
+                        {/* Glow casing layer */}
+                        <Polyline
+                          positions={footway.positions}
+                          pathOptions={{
+                            color: style.glowColor,
+                            weight: style.weight + 3,
+                            opacity: isNearSelected ? 0.4 : 0.15,
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                          }}
+                        />
+                        {/* Main path */}
+                        <Polyline
+                          positions={footway.positions}
+                          pathOptions={{
+                            color: style.color,
+                            weight: style.weight,
+                            opacity: style.opacity,
+                            dashArray: style.dashArray,
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                          }}
+                        >
+                          <Tooltip sticky direction="top">
+                            <div className="text-xs font-semibold text-slate-900 p-0.5">
+                              {footway.status === 'accessible' ? '🟢' : footway.status === 'inaccessible' ? '🔴' : '🟡'}
+                              {' '}{footway.name || footway.highway}
+                              {footway.reason && <div className="text-slate-500 text-[10px]">{footway.reason}</div>}
+                            </div>
+                          </Tooltip>
+                        </Polyline>
+                      </React.Fragment>
+                    );
+                  })}
+
+                  {/* All Point Markers (Accessible & Barrier Entrances + POIs) */}
                   {evaluatedPlace.evaluatedPoints.map(point => (
                     <Marker
                       key={point.id}
@@ -411,12 +730,28 @@ export default function PlacesView() {
                       eventHandlers={{ click: () => handleSelectPoint(point.id) }}
                     >
                       <Popup>
-                        <div className="min-w-[160px]">
-                          <p className="font-bold text-sm text-slate-900">{point.icon} {point.name}</p>
-                          <p className="text-xs mt-0.5" style={{ color: (STATUS_THRESHOLDS[point.evaluation.status] || STATUS_THRESHOLDS.unknown).color }}>
-                            {(STATUS_THRESHOLDS[point.evaluation.status] || STATUS_THRESHOLDS.unknown).label}
+                        <div className="min-w-[190px] p-1">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-base">{point.icon}</span>
+                            <p className="font-bold text-xs text-slate-900 leading-tight">{point.name}</p>
+                          </div>
+                          <p className="text-[11px] font-bold" style={{ color: (STATUS_THRESHOLDS[point.evaluation.status] || STATUS_THRESHOLDS.unknown).color }}>
+                            {(STATUS_THRESHOLDS[point.evaluation.status] || STATUS_THRESHOLDS.unknown).emoji} {(STATUS_THRESHOLDS[point.evaluation.status] || STATUS_THRESHOLDS.unknown).label}
                           </p>
-                          <p className="text-[11px] text-slate-500 mt-1">{point.evaluation.explanation}</p>
+                          <p className="text-[11px] text-slate-600 mt-1 leading-snug">{point.evaluation.explanation}</p>
+                          
+                          {point.evaluation.status === 'accessible' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNavigateToRoute(point);
+                              }}
+                              className="mt-2.5 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                            >
+                              <Navigation className="w-3.5 h-3.5" />
+                              <span>Show Accessible Route</span>
+                            </button>
+                          )}
                         </div>
                       </Popup>
                     </Marker>
@@ -533,6 +868,17 @@ export default function PlacesView() {
                           </div>
                         )}
                       </div>
+                    )}
+
+                    {/* Show Accessible Route Button for Accessible Spots */}
+                    {selectedPoint.evaluation.status === 'accessible' && (
+                      <button
+                        onClick={() => handleNavigateToRoute(selectedPoint)}
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs font-black shadow-md hover:shadow-lg transition-all cursor-pointer transform active:scale-[0.99]"
+                      >
+                        <Navigation className="w-4 h-4 text-white animate-pulse" />
+                        <span>Show Accessible Route in Route Navigator</span>
+                      </button>
                     )}
 
                     {/* Report Button */}

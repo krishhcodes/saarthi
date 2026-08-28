@@ -139,11 +139,12 @@ function buildExplanation(point, evidence, verdict, disabilityKey) {
 
 /**
  * Get full evaluated place with all points evaluated for a disability
+ * Also synthesizes connected barrier-free pathways from accessible entrances to all accessible POIs
  */
 export function evaluatePlace(place, primaryDisability) {
   const disabilityKey = DISABILITY_KEY[primaryDisability] || 'mobility';
 
-  const evaluatedPoints = place.visitorPoints.map(point => ({
+  const evaluatedPoints = (place.visitorPoints || []).map(point => ({
     ...point,
     evaluation: evaluatePoint(point, disabilityKey)
   }));
@@ -152,6 +153,25 @@ export function evaluatePlace(place, primaryDisability) {
   const partialCount = evaluatedPoints.filter(p => p.evaluation.status === 'partial').length;
   const inaccessibleCount = evaluatedPoints.filter(p => p.evaluation.status === 'inaccessible').length;
   const unknownCount = evaluatedPoints.filter(p => p.evaluation.status === 'unknown').length;
+
+  const accessibleEntrances = evaluatedPoints.filter(
+    p => (p.type === 'entrance' || p.name?.toLowerCase().includes('gate') || p.name?.toLowerCase().includes('entry') || p.name?.toLowerCase().includes('shuttle')) &&
+         p.evaluation.status === 'accessible'
+  );
+
+  const inaccessibleEntrances = evaluatedPoints.filter(
+    p => (p.type === 'entrance' || p.name?.toLowerCase().includes('gate') || p.name?.toLowerCase().includes('entry')) &&
+         p.evaluation.status !== 'accessible'
+  );
+
+  const accessiblePOIs = evaluatedPoints.filter(
+    p => p.evaluation.status === 'accessible' && !accessibleEntrances.some(e => e.id === p.id)
+  );
+
+  // Footway network is now fetched from Overpass API in PlacesView
+  // No more hardcoded campusTrails - all paths are real OSM geometry
+  const accessiblePathways = [];
+
 
   const overallScore = place.overallScore?.[disabilityKey] ?? null;
 
@@ -163,6 +183,9 @@ export function evaluatePlace(place, primaryDisability) {
   return {
     ...place,
     evaluatedPoints,
+    accessibleEntrances,
+    inaccessibleEntrances,
+    accessiblePathways,
     overallStatus,
     overallScore,
     disabilityKey,
