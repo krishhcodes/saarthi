@@ -9,6 +9,7 @@ import SosEmergencyModal from './components/common/SosEmergencyModal';
 import VoiceAssistantModal from './components/common/VoiceAssistantModal';
 import NotificationToast from './components/common/NotificationToast';
 import DemoIndicator from './components/common/DemoIndicator';
+import ScreenReaderNarrator from './components/common/ScreenReaderNarrator';
 
 // View Components
 import LandingView from './components/views/LandingView';
@@ -111,6 +112,7 @@ export default function App() {
       {/* Floating Modals & Drawers */}
       <AiChatbotDrawer />
       <VoiceAssistantModal />
+      <ScreenReaderNarrator />
       <SosEmergencyModal />
       <NotificationToast />
       <DemoIndicator />

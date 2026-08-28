@@ -9,7 +9,14 @@ import {
   DEMO_PERSONAS,
   MOCK_ROUTES
 } from '../data/seedData';
-import { speakText, UI_TRANSLATIONS } from '../services/translationService';
+import { 
+  speakText, 
+  stopSpeaking,
+  UI_TRANSLATIONS, 
+  getGoogleTransCookie, 
+  changeGoogleLanguage, 
+  SUPPORTED_LANGUAGES 
+} from '../services/translationService';
 import { 
   auth, 
   db, 
@@ -28,7 +35,21 @@ import { seedFirestoreIfEmpty } from '../services/seedService';
 
 const AppContext = createContext();
 
+// Load saved accessibility preferences from localStorage
+const getSavedA11yPrefs = () => {
+  try {
+    const saved = localStorage.getItem('saarthi_a11y_prefs');
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    // fallback
+  }
+  return {};
+};
+
 export function AppProvider({ children }) {
+  const initialA11y = getSavedA11yPrefs();
+  const initialLang = getGoogleTransCookie() || initialA11y.activeLanguage || 'en';
+
   // Authentication & Active Persona
   const [currentUser, setCurrentUser] = useState(DEMO_PERSONAS.tourist_wheelchair);
   const [userProfile, setUserProfile] = useState(DEMO_PERSONAS.tourist_wheelchair.accessibilityProfile);
@@ -43,11 +64,11 @@ export function AppProvider({ children }) {
   const [selectedHotelForBooking, setSelectedHotelForBooking] = useState(null);
 
   // Accessibility UI Preferences
-  const [highContrast, setHighContrast] = useState(false);
-  const [textSize, setTextSize] = useState('base'); // 'sm', 'base', 'lg', 'xl'
-  const [dyslexicFont, setDyslexicFont] = useState(false);
-  const [screenReaderVoice, setScreenReaderVoice] = useState(false);
-  const [activeLanguage, setActiveLanguage] = useState('en');
+  const [highContrast, setHighContrast] = useState(initialA11y.highContrast ?? false);
+  const [textSize, setTextSize] = useState(initialA11y.textSize || 'base'); // 'sm', 'base', 'lg', 'xl'
+  const [dyslexicFont, setDyslexicFont] = useState(initialA11y.dyslexicFont ?? false);
+  const [screenReaderVoice, setScreenReaderVoice] = useState(initialA11y.screenReaderVoice ?? false);
+  const [activeLanguage, setActiveLanguage] = useState(initialLang);
 
   // Modals & Drawers
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
@@ -235,7 +256,7 @@ export function AppProvider({ children }) {
     loadCloudDatabase();
   }, []);
 
-  // Handle High Contrast & Text Size classes on <html>
+  // 3. Handle High Contrast, Text Size & Dyslexic Font classes on <html> + localStorage persistence
   useEffect(() => {
     const root = document.documentElement;
     if (highContrast) {
@@ -252,7 +273,49 @@ export function AppProvider({ children }) {
     } else {
       root.classList.remove('font-opendyslexic');
     }
-  }, [highContrast, textSize, dyslexicFont]);
+
+    try {
+      localStorage.setItem('saarthi_a11y_prefs', JSON.stringify({
+        highContrast,
+        textSize,
+        dyslexicFont,
+        screenReaderVoice,
+        activeLanguage
+      }));
+    } catch (e) {
+      // ignore
+    }
+  }, [highContrast, textSize, dyslexicFont, screenReaderVoice, activeLanguage]);
+
+  // 4. Global Hover & Focus Speech Narration when screenReaderVoice is active
+  useEffect(() => {
+    if (!screenReaderVoice) return;
+
+    let lastSpokenText = '';
+    const handleElementHover = (e) => {
+      const target = e.target.closest('button, a, [role="button"], [role="tab"], h1, h2, h3, [data-narrate]');
+      if (!target) return;
+
+      const narrationText = target.getAttribute('data-narrate') ||
+                            target.getAttribute('aria-label') ||
+                            target.getAttribute('title') ||
+                            target.innerText;
+
+      if (narrationText && narrationText.trim() && narrationText !== lastSpokenText) {
+        lastSpokenText = narrationText;
+        const voiceCode = SUPPORTED_LANGUAGES.find(l => l.code === activeLanguage)?.voiceCode || 'en-IN';
+        speakText(narrationText.slice(0, 140), voiceCode, true);
+      }
+    };
+
+    document.addEventListener('mouseover', handleElementHover, { passive: true });
+    document.addEventListener('focusin', handleElementHover, { passive: true });
+
+    return () => {
+      document.removeEventListener('mouseover', handleElementHover);
+      document.removeEventListener('focusin', handleElementHover);
+    };
+  }, [screenReaderVoice, activeLanguage]);
 
   // Sign out
   const signOutUser = async () => {

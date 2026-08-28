@@ -7,9 +7,63 @@
     scroll-behavior: smooth;
   }
 
-  /* High Contrast Mode */
+  /* ----------------------------------------------------
+     Google Translate Shield & Clean Seamless Layout
+     ---------------------------------------------------- */
+  body {
+    top: 0px !important;
+    position: static !important;
+  }
+
+  .goog-te-banner-frame,
+  .goog-te-banner-frame.skiptranslate,
+  iframe.goog-te-banner-frame,
+  #goog-gt-tt,
+  .goog-te-balloon-frame,
+  .goog-tooltip,
+  .goog-tooltip:hover {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .goog-text-highlight {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  #google_translate_element {
+    display: none !important;
+  }
+
+  /* ----------------------------------------------------
+     OpenDyslexic Font Styling
+     ---------------------------------------------------- */
+  html.font-opendyslexic,
+  html.font-opendyslexic body,
+  html.font-opendyslexic button,
+  html.font-opendyslexic input,
+  html.font-opendyslexic select,
+  html.font-opendyslexic textarea,
+  html.font-opendyslexic h1,
+  html.font-opendyslexic h2,
+  html.font-opendyslexic h3,
+  html.font-opendyslexic h4,
+  html.font-opendyslexic h5,
+  html.font-opendyslexic h6,
+  html.font-opendyslexic p,
+  html.font-opendyslexic span,
+  html.font-opendyslexic a,
+  html.font-opendyslexic div {
+    font-family: 'OpenDyslexic', 'Lexend', sans-serif !important;
+    letter-spacing: 0.035em !important;
+    line-height: 1.6 !important;
+  }
+
+  /* ----------------------------------------------------
+     WCAG 2.2 AAA High Contrast Mode (7:1 Contrast Ratio)
+     ---------------------------------------------------- */
   html.high-contrast {
-    filter: contrast(140%);
+    filter: contrast(135%);
   }
 
   html.high-contrast body {
@@ -17,40 +71,81 @@
     color: #ffffff !important;
   }
 
-  html.high-contrast .bg-white {
-    background-color: #121212 !important;
+  html.high-contrast .bg-white,
+  html.high-contrast .bg-slate-50,
+  html.high-contrast .bg-slate-100,
+  html.high-contrast .bg-slate-200,
+  html.high-contrast .bg-gray-50,
+  html.high-contrast .bg-gray-100 {
+    background-color: #0a0a0a !important;
     color: #ffffff !important;
     border-color: #facc15 !important;
   }
 
-  html.high-contrast .bg-slate-50, 
-  html.high-contrast .bg-slate-100, 
-  html.high-contrast .bg-gray-50 {
-    background-color: #1a1a1a !important;
+  html.high-contrast .bg-slate-900,
+  html.high-contrast .bg-slate-800 {
+    background-color: #000000 !important;
+    border-color: #38bdf8 !important;
+  }
+
+  html.high-contrast .text-slate-900,
+  html.high-contrast .text-slate-800,
+  html.high-contrast .text-slate-700,
+  html.high-contrast .text-slate-600,
+  html.high-contrast .text-slate-500,
+  html.high-contrast .text-gray-600,
+  html.high-contrast .text-gray-500 {
     color: #ffffff !important;
   }
 
-  html.high-contrast .text-slate-600,
-  html.high-contrast .text-slate-500,
-  html.high-contrast .text-gray-600 {
-    color: #e2e8f0 !important;
+  html.high-contrast .text-slate-400,
+  html.high-contrast .text-slate-300 {
+    color: #fef08a !important; /* Soft high-visibility yellow for secondary details */
   }
 
   html.high-contrast button {
     border: 2px solid #facc15 !important;
   }
 
-  /* Focus styling for keyboard accessibility */
+  html.high-contrast a {
+    text-decoration: underline !important;
+    text-underline-offset: 4px !important;
+  }
+
+  html.high-contrast input,
+  html.high-contrast select,
+  html.high-contrast textarea {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border: 2px solid #facc15 !important;
+  }
+
+  html.high-contrast [role="dialog"] {
+    background-color: #050505 !important;
+    border: 3px solid #facc15 !important;
+    color: #ffffff !important;
+  }
+
+  /* ----------------------------------------------------
+     Keyboard Accessibility & Focus States
+     ---------------------------------------------------- */
   *:focus-visible {
     outline: 3px solid #0284c7;
     outline-offset: 2px;
   }
 
-  /* Text scaling */
+  html.high-contrast *:focus-visible {
+    outline: 4px solid #facc15 !important;
+    outline-offset: 3px !important;
+  }
+
+  /* ----------------------------------------------------
+     Dynamic Text Scaling (SM, BASE, LG, XL)
+     ---------------------------------------------------- */
   html.text-size-sm { font-size: 14px; }
   html.text-size-base { font-size: 16px; }
-  html.text-size-lg { font-size: 18px; }
-  html.text-size-xl { font-size: 20px; }
+  html.text-size-lg { font-size: 18.5px; }
+  html.text-size-xl { font-size: 21px; }
 }
 
 /* Custom scrollbar */
@@ -79,3 +174,4 @@
   margin: 0.75rem;
   line-height: 1.5;
 }
+

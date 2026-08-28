@@ -8,12 +8,29 @@
     <meta name="description" content="Saarthi is an SIH 2026 initiative ensuring barrier-free, accessible, and dignified travel for persons with disabilities." />
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <!-- Google Fonts -->
+    <!-- Google Fonts & OpenDyslexic Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/opendyslexic@latest/open-dyslexic.css" />
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased selection:bg-saarthi-500 selection:text-white">
+    <!-- Google Translate Element Container (Controlled via Saarthi Accessibility Bar) -->
+    <div id="google_translate_element" style="display: none;" class="notranslate-container"></div>
+    <script type="text/javascript">
+      window.googleTranslateElementInit = function() {
+        if (window.google && window.google.translate) {
+          new window.google.translate.TranslateElement({
+            pageLanguage: 'en',
+            includedLanguages: 'en,hi,bn,mr,ta,te,kn,gu,pa,ur,ml,or,as,es,fr,de,ar,ja',
+            layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false
+          }, 'google_translate_element');
+        }
+      };
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

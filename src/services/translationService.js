@@ -10,8 +10,15 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ', flag: '🇮🇳', voiceCode: 'kn-IN' },
   { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી', flag: '🇮🇳', voiceCode: 'gu-IN' },
   { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ', flag: '🇮🇳', voiceCode: 'pa-IN' },
+  { code: 'ml', name: 'Malayalam', native: 'മലയാളം', flag: '🇮🇳', voiceCode: 'ml-IN' },
+  { code: 'or', name: 'Odia', native: 'ଓଡ଼ିଆ', flag: '🇮🇳', voiceCode: 'or-IN' },
+  { code: 'ur', name: 'Urdu', native: 'اردو', flag: '🇮🇳', voiceCode: 'ur-IN' },
+  { code: 'as', name: 'Assamese', native: 'অসমীয়া', flag: '🇮🇳', voiceCode: 'as-IN' },
   { code: 'es', name: 'Spanish', native: 'Español', flag: '🇪🇸', voiceCode: 'es-ES' },
-  { code: 'fr', name: 'French', native: 'Français', flag: '🇫🇷', voiceCode: 'fr-FR' }
+  { code: 'fr', name: 'French', native: 'Français', flag: '🇫🇷', voiceCode: 'fr-FR' },
+  { code: 'de', name: 'German', native: 'Deutsch', flag: '🇩🇪', voiceCode: 'de-DE' },
+  { code: 'ja', name: 'Japanese', native: '日本語', flag: '🇯🇵', voiceCode: 'ja-JP' },
+  { code: 'ar', name: 'Arabic', native: 'العربية', flag: '🇸🇦', voiceCode: 'ar-SA' }
 ];
 
 export const UI_TRANSLATIONS = {
@@ -66,112 +73,93 @@ export const UI_TRANSLATIONS = {
     contrast_toggle: "उच्च कंट्रास्ट",
     speech_toggle: "स्क्रीन रीडर आवाज",
     voice_command: "ध्वनि नेविगेशन"
-  },
-  bn: {
-    brand_tagline: "প্রতিবন্ধী ব্যক্তিদের জন্য সহজলভ্য পর্যটন পথপ্রদর্শক",
-    hero_tagline: "সকলের জন্য পর্যটন।",
-    hero_subtext: "মর্যাদা, আত্মবিশ্বাস এবং সমান সুযোগের সাথে বিশ্ব ঘুরে দেখুন।",
-    plan_trip_btn: "আমার ভ্রমণ পরিকল্পনা করুন",
-    explore_dest_btn: "গন্তব্য দেখুন",
-    good_morning: "শুভ সকাল",
-    recommended_for_you: "আপনার জন্য প্রস্তাবিত",
-    your_journey: "আপনার সহজলভ্য ভ্রমণ",
-    nearby_accessible: "কাছাকাছি সহজলভ্য স্থান",
-    gov_support: "সরকারি সহায়তা",
-    available_guides: "বিশেষ গাইড",
-    journey_score: "ভ্রমণ স্কোর",
-    community_map: "কমিউনিটি মানচিত্র",
-    ai_verify: "এআই যাচাইকরণ",
-    store: "সহায়ক স্টোর",
-    filter_city: "শহর ফিল্টার করুন",
-    all_cities: "সব শহর",
-    book_guide: "গাইড বুক করুন",
-    view_details: "বিস্তারিত দেখুন",
-    step_free_route: "ধাপমুক্ত রুট",
-    emergency_sos: "জরুরী এসওএস",
-    contrast_toggle: "উচ্চ কনট্রাস্ট",
-    speech_toggle: "ভয়েস রিডার",
-    voice_command: "ভয়েস কমান্ড"
-  },
-  mr: {
-    brand_tagline: "दिव्यांगांसाठी सुलभ पर्यटन मार्गदर्शक",
-    hero_tagline: "सर्वांसाठी पर्यटन.",
-    hero_subtext: "स्वाभिमान, आत्मविश्वास आणि समान संधींसह जग अनुभवा.",
-    plan_trip_btn: "माझ्या सहलीचे नियोजन करा",
-    explore_dest_btn: "पर्यटन स्थळे पहा",
-    good_morning: "शुभ प्रभात",
-    recommended_for_you: "तुमच्यासाठी शिफारस केलेले",
-    your_journey: "तुमचा सुलभ प्रवास",
-    nearby_accessible: "जवळपासची सुलभ ठिकाणे",
-    gov_support: "सरकारी योजना आणि मदत",
-    available_guides: "प्रशिक्षित गाईड्स",
-    journey_score: "प्रवास सुलभता गुण",
-    community_map: "समुदाय सुलभता नकाशा",
-    ai_verify: "एआय सुलभता पडताळणी",
-    store: "सुलभ प्रवास साहित्य",
-    filter_city: "शहर निवडा",
-    all_cities: "सर्व शहरे",
-    book_guide: "गाईड बुक करा",
-    view_details: "सविस्तर माहिती",
-    step_free_route: "पायऱ्यांशिवाय मार्ग",
-    emergency_sos: "आपत्कालीन मदत",
-    contrast_toggle: "हाय कॉन्ट्रास्ट",
-    speech_toggle: "व्हॉइस रीडर",
-    voice_command: "व्हॉइस नेव्हिगेशन"
-  },
-  ta: {
-    brand_tagline: "மாற்றுத்திறனாளிகளுக்கான அணுகக்கூடிய சுற்றுலா வழிகாட்டி",
-    hero_tagline: "அனைவருக்கும் சுற்றுலா.",
-    hero_subtext: "சுயமரியாதை மற்றும் நம்பிக்கையுடன் உலகை ஆராயுங்கள்.",
-    plan_trip_btn: "பயணத்தை திட்டமிடுங்கள்",
-    explore_dest_btn: "இடங்களை காண்க",
-    good_morning: "காலை வணக்கம்",
-    recommended_for_you: "உங்களுக்காக பரிந்துரைக்கப்பட்டது",
-    your_journey: "உங்கள் அணுகக்கூடிய பயணம்",
-    nearby_accessible: "அருகிலுள்ள அணுகக்கூடிய இடங்கள்",
-    gov_support: "அரசு உதவிகள்",
-    available_guides: "சிறப்பு வழிகாட்டிகள்",
-    journey_score: "பயண அணுகல் மதிப்பெண்",
-    community_map: "சமூக வரைபடம்",
-    ai_verify: "AI சரிபார்ப்பு",
-    store: "பயணக் கடை",
-    filter_city: "நகரம் வடிகட்டு",
-    all_cities: "அனைத்து நகரங்கள்",
-    book_guide: "வழிகாட்டியை பதிவு செய்க",
-    view_details: "விவரங்களை காண்க",
-    step_free_route: "படி-இல்லா பாதை",
-    emergency_sos: "அவசர உதவி",
-    contrast_toggle: "உயர் மாறுபாடு",
-    speech_toggle: "குரல் வாசிப்பாளர்",
-    voice_command: "குரல் கட்டளை"
-  },
-  te: {
-    brand_tagline: "దివ్యాంగుల కోసం అందుబాటులో ఉండే పర్యాటక మార్గదర్శి",
-    hero_tagline: "అందరికీ పర్యాటకం.",
-    hero_subtext: "గౌరవం, ఆత్మవిశ్వాసంతో ప్రపంచాన్ని అన్వేషించండి.",
-    plan_trip_btn: "నా యాత్రను ప్లాన్ చేయండి",
-    explore_dest_btn: "స్థలాలను చూడండి",
-    good_morning: "శుభోదయం",
-    recommended_for_you: "మీ కోసం సిఫార్సు చేయబడినవి",
-    your_journey: "మీ అందుబాటు యాత్ర",
-    nearby_accessible: "సమీపంలోని అందుబాటు స్థలాలు",
-    gov_support: "ప్రభుత్వ పథకాలు & సహాయం",
-    available_guides: "నైపుణ్యం గల గైడ్లు",
-    journey_score: "యాత్ర స్కోరు",
-    community_map: "కమ్యూనిటీ మ్యాప్",
-    ai_verify: "AI పరిశీలన",
-    store: "ట్రావెల్ స్టోర్",
-    filter_city: "నగరాన్ని ఎంచుకోండి",
-    all_cities: "అన్ని నగరాలు",
-    book_guide: "గైడ్‌ను బుక్ చేయండి",
-    view_details: "వివరాలను చూడండి",
-    step_free_route: "మెట్లు లేని మార్గం",
-    emergency_sos: "అత్యవసర సహాయం",
-    contrast_toggle: "హై కాంట్రాస్ట్",
-    speech_toggle: "వాయిస్ రీడర్",
-    voice_command: "వాయిస్ కమాండ్"
   }
 };
+
+/**
+ * Get the current googtrans cookie value (e.g., '/auto/hi' -> 'hi')
+ */
+export function getGoogleTransCookie() {
+  const match = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
+  if (match && match[1]) {
+    const parts = decodeURIComponent(match[1]).split('/');
+    return parts[parts.length - 1] || 'en';
+  }
+  return 'en';
+}
+
+/**
+ * Set the googtrans cookie for seamless real-time translation across the whole site
+ */
+export function setGoogleTransCookie(langCode) {
+  const value = `/auto/${langCode}`;
+  document.cookie = `googtrans=${value}; path=/; domain=${window.location.hostname}; SameSite=Lax`;
+  document.cookie = `googtrans=${value}; path=/; SameSite=Lax`;
+}
+
+/**
+ * Clear the Google Translate cookies to reset back to original language (English)
+ */
+export function clearGoogleTransCookie() {
+  document.cookie = `googtrans=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+  document.cookie = `googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+}
+
+/**
+ * Trigger Real-time Google Translate dynamically using the combo box or cookie reload
+ */
+export function changeGoogleLanguage(targetLang) {
+  try {
+    if (targetLang === 'en') {
+      clearGoogleTransCookie();
+      setGoogleTransCookie('en');
+    } else {
+      setGoogleTransCookie(targetLang);
+    }
+
+    // Try finding the Google Translate combo dropdown
+    const selectCombo = document.querySelector('.goog-te-combo') || document.querySelector('#google_translate_element select');
+
+    if (selectCombo) {
+      selectCombo.value = targetLang;
+      selectCombo.dispatchEvent(new Event('change'));
+      return true;
+    }
+
+    // If combo isn't ready in DOM yet, poll for 2 seconds
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      const combo = document.querySelector('.goog-te-combo') || document.querySelector('#google_translate_element select');
+      if (combo) {
+        combo.value = targetLang;
+        combo.dispatchEvent(new Event('change'));
+        clearInterval(interval);
+      } else if (attempts > 15) {
+        clearInterval(interval);
+        // If the combo is still unavailable (e.g. initial load), reloading the page applies the googtrans cookie automatically
+        window.location.reload();
+      }
+    }, 150);
+
+    return true;
+  } catch (err) {
+    console.warn('[GoogleTranslateBridge Error]', err);
+    return false;
+  }
+}
+
+/**
+ * Reset Google Translation completely back to English original state
+ */
+export function clearGoogleTranslation() {
+  clearGoogleTransCookie();
+  const selectCombo = document.querySelector('.goog-te-combo');
+  if (selectCombo) {
+    selectCombo.value = 'en';
+    selectCombo.dispatchEvent(new Event('change'));
+  }
+}
 
 export const ACCESSIBLE_TRAVEL_PHRASES = [
   {
@@ -211,31 +199,58 @@ export const ACCESSIBLE_TRAVEL_PHRASES = [
   }
 ];
 
-export function speakText(text, lang = 'en-IN') {
+let speechDebounceTimer = null;
+
+export function speakText(text, lang = 'en-IN', debounce = false) {
   if (!('speechSynthesis' in window)) {
     console.warn("Speech synthesis not supported in this browser.");
     return false;
   }
 
-  window.speechSynthesis.cancel(); // Stop ongoing speech
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.95;
-  utterance.pitch = 1.0;
-  
-  // Try to find matching voice
-  const voices = window.speechSynthesis.getVoices();
-  const matchedVoice = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
-  if (matchedVoice) {
-    utterance.voice = matchedVoice;
+  if (debounce) {
+    if (speechDebounceTimer) clearTimeout(speechDebounceTimer);
+    speechDebounceTimer = setTimeout(() => {
+      executeSpeak(text, lang);
+    }, 250);
+    return true;
   }
 
-  window.speechSynthesis.speak(utterance);
-  return true;
+  return executeSpeak(text, lang);
+}
+
+function executeSpeak(text, lang) {
+  try {
+    window.speechSynthesis.cancel(); // Stop ongoing speech
+
+    const cleanText = (text || '').replace(/<[^>]*>?/gm, '').trim();
+    if (!cleanText) return false;
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    
+    // Find matching voice
+    const voices = window.speechSynthesis.getVoices();
+    const langPrefix = (lang || 'en').split('-')[0].toLowerCase();
+    const matchedVoice = voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
+    if (matchedVoice) {
+      utterance.voice = matchedVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+    return true;
+  } catch (e) {
+    console.warn('[SpeechSynthesis Warning]', e);
+    return false;
+  }
 }
 
 export function stopSpeaking() {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
   }
+  if (speechDebounceTimer) {
+    clearTimeout(speechDebounceTimer);
+  }
 }
+
