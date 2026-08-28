@@ -24,6 +24,7 @@ import {
   MapPinCheck
 } from 'lucide-react';
 import { speakText } from '../../services/translationService';
+import MonumentImage from '../common/MonumentImage';
 
 export default function DestinationDetailView() {
   const { 
@@ -99,8 +100,10 @@ export default function DestinationDetailView() {
       {/* Hero Media & Overview Card */}
       <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-lg grid grid-cols-1 lg:grid-cols-12">
         <div className="lg:col-span-7 relative h-72 lg:h-full min-h-[320px]">
-          <img
-            src={dest.image}
+          <MonumentImage
+            name={dest.name}
+            city={dest.city}
+            fallback={dest.image}
             alt={dest.name}
             className="w-full h-full object-cover"
           />

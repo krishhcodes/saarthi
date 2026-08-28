@@ -3,6 +3,7 @@
 // Maps granular infrastructure: Entrances, Toilets, Transport, Paths, and Sensory Services
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { fetchWikimediaPhoto } from './wikimediaService';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const WORKING_MODELS = [
@@ -23,7 +24,6 @@ if (GEMINI_API_KEY && !GEMINI_API_KEY.includes('your_')) {
 
 // In-Memory Session Cache to avoid redundant API queries
 const recommendationsCache = new Map();
-const imageCache = new Map();
 
 // Category-based fallback images if Wikipedia has no photo
 const CATEGORY_IMAGES = {
@@ -42,47 +42,11 @@ const CATEGORY_IMAGES = {
  * Fetch authentic photo of the attraction from Wikipedia / Wikimedia Commons API
  */
 async function fetchRealAttractionImage(name, city, category = '') {
-  const cacheKey = `${name}_${city}`.toLowerCase();
-  if (imageCache.has(cacheKey)) {
-    return imageCache.get(cacheKey);
-  }
-
   try {
-    // 1. Direct Summary Lookup on Wikipedia
-    const cleanName = name.replace(/\(.*?\)/g, '').trim();
-    const summaryRes = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanName)}`
-    );
-    if (summaryRes.ok) {
-      const summaryData = await summaryRes.json();
-      if (summaryData.thumbnail?.source) {
-        imageCache.set(cacheKey, summaryData.thumbnail.source);
-        return summaryData.thumbnail.source;
-      }
-    }
-
-    // 2. Wikipedia Search with City Query
-    const searchRes = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(cleanName + ' ' + city)}&format=json&origin=*`
-    );
-    if (searchRes.ok) {
-      const searchData = await searchRes.json();
-      const firstResult = searchData.query?.search?.[0]?.title;
-      if (firstResult) {
-        const pageRes = await fetch(
-          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(firstResult)}`
-        );
-        if (pageRes.ok) {
-          const pageData = await pageRes.json();
-          if (pageData.thumbnail?.source) {
-            imageCache.set(cacheKey, pageData.thumbnail.source);
-            return pageData.thumbnail.source;
-          }
-        }
-      }
-    }
+    const wikiPhoto = await fetchWikimediaPhoto(name, city);
+    if (wikiPhoto) return wikiPhoto;
   } catch (e) {
-    // network or parse error, proceed to category fallback
+    // proceed to category fallback
   }
 
   // 3. Fallback to appropriate category theme photo

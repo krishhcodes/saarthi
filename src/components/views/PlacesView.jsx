@@ -264,6 +264,14 @@ export default function PlacesView() {
     setFootwayError(false);
     setMapCenter([place.lat, place.lng]);
     setMapZoom(16);
+
+    // Asynchronously resolve authentic Wikimedia photo for any selected place
+    fetchWikimediaPhoto(place.name, place.city).then((photoUrl) => {
+      if (photoUrl) {
+        setSelectedPlace(prev => prev?.id === place.id ? { ...prev, coverImage: photoUrl } : prev);
+        setEvaluatedPlace(prev => prev?.id === place.id ? { ...prev, coverImage: photoUrl } : prev);
+      }
+    });
   }, []);
 
   const handleSelectPoint = (pointId) => {

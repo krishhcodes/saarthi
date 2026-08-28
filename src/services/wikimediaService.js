@@ -1,11 +1,13 @@
 /**
  * wikimediaService.js
- * Fetches high-quality cover photos from Wikimedia Commons for any place.
+ * Fetches high-quality authentic cover photos from Wikimedia Commons & Wikipedia for any Indian monument/place.
  *
- * Strategy:
- *   1. Try Wikimedia REST API (Wikipedia page image) — fastest & most accurate
- *   2. Fall back to Wikimedia Commons image search via opensearch
- *   3. Return null if nothing found — caller keeps its existing coverImage
+ * Strategies:
+ *   1. In-memory & sessionStorage cache (instant 0ms retrieval)
+ *   2. Smart name normalization for Indian heritage sites
+ *   3. Wikipedia REST summary API
+ *   4. Wikipedia Action API pageimages search
+ *   5. Wikimedia Commons file search
  *
  * 100% Free — no API key required.
  */
@@ -14,34 +16,101 @@ const WP_REST = 'https://en.wikipedia.org/api/rest_v1';
 const WP_ACTION = 'https://en.wikipedia.org/w/api.php';
 const COMMONS_ACTION = 'https://commons.wikimedia.org/w/api.php';
 
+// In-Memory & Session Cache
+const WIKIMEDIA_CACHE = new Map();
+
+// Helper to get from cache
+export function getCachedWikimediaPhoto(placeName, city = '') {
+  const key = `${placeName}_${city}`.toLowerCase().trim();
+  if (WIKIMEDIA_CACHE.has(key)) return WIKIMEDIA_CACHE.get(key);
+  try {
+    const sessionVal = sessionStorage.getItem(`saarthi_img_${key}`);
+    if (sessionVal) {
+      WIKIMEDIA_CACHE.set(key, sessionVal);
+      return sessionVal;
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Helper to set cache
+function setCachedWikimediaPhoto(placeName, city = '', url) {
+  if (!url) return;
+  const key = `${placeName}_${city}`.toLowerCase().trim();
+  WIKIMEDIA_CACHE.set(key, url);
+  try {
+    sessionStorage.setItem(`saarthi_img_${key}`, url);
+  } catch (e) {}
+}
+
 /**
  * Resize a Wikimedia thumbnail URL to a target pixel width.
- * Wikimedia serves responsive images — just change the number in the URL.
  */
 function resizeWikimediaThumb(url, targetWidth = 800) {
   if (!url) return url;
-  // e.g. https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Foo.jpg/320px-Foo.jpg
   return url.replace(/\/\d+px-/, `/${targetWidth}px-`);
 }
 
 /**
- * Strategy 1: Wikipedia page image via REST summary API.
- * Most reliable for well-known landmarks.
- *
- * @param {string} placeName – e.g. "Taj Mahal" or "Jantar Mantar, Jaipur"
- * @returns {Promise<string|null>} image URL or null
+ * Normalize Indian monument names for Wikipedia page title matching
  */
-async function fetchFromWikipediaSummary(placeName) {
-  // Wikipedia titles use underscores, URL-encode properly
-  const title = encodeURIComponent(placeName.replace(/\s+/g, '_'));
+function generateSearchVariants(placeName, city = '') {
+  if (!placeName) return [];
+  const clean = placeName
+    .replace(/\(.*?\)/g, '') // remove parentheses
+    .replace(/\b(Complex|Heritage Site|Monument|Entrance Plaza|Plaza|Visitor Center)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const variants = [];
+  
+  // 1. Cleaned name + city
+  if (city) {
+    const cleanCity = city.split(',')[0].trim();
+    variants.push(`${clean}, ${cleanCity}`);
+    variants.push(`${clean} ${cleanCity}`);
+  }
+
+  // 2. Cleaned name alone
+  variants.push(clean);
+
+  // 3. Raw place name alone
+  variants.push(placeName.split(',')[0].trim());
+
+  // 4. Known aliases for Indian landmarks
+  if (/qutub|qutb/i.test(placeName)) variants.push('Qutb Minar');
+  if (/taj mahal/i.test(placeName)) variants.push('Taj Mahal');
+  if (/hawa mahal/i.test(placeName)) variants.push('Hawa Mahal');
+  if (/amer|amber fort/i.test(placeName)) variants.push('Amer Fort');
+  if (/red fort/i.test(placeName)) variants.push('Red Fort');
+  if (/humayun/i.test(placeName)) variants.push("Humayun's Tomb");
+  if (/mysore palace|mysuru palace/i.test(placeName)) variants.push('Mysore Palace');
+  if (/golden temple|harmandir/i.test(placeName)) variants.push('Golden Temple');
+  if (/gateway of india/i.test(placeName)) variants.push('Gateway of India');
+  if (/victoria memorial/i.test(placeName)) variants.push('Victoria Memorial, Kolkata');
+  if (/kashi vishwanath/i.test(placeName)) variants.push('Kashi Vishwanath Temple');
+  if (/meenakshi/i.test(placeName)) variants.push('Meenakshi Temple');
+  if (/charminar/i.test(placeName)) variants.push('Charminar');
+  if (/konark|sun temple/i.test(placeName)) variants.push('Konark Sun Temple');
+  if (/ellora/i.test(placeName)) variants.push('Ellora Caves');
+  if (/ajanta/i.test(placeName)) variants.push('Ajanta Caves');
+
+  // Deduplicate
+  return [...new Set(variants.filter(Boolean))];
+}
+
+/**
+ * Strategy 1: Wikipedia page image via REST summary API.
+ */
+async function fetchFromWikipediaSummary(title) {
   try {
-    const resp = await fetch(`${WP_REST}/page/summary/${title}`, {
+    const encoded = encodeURIComponent(title.replace(/\s+/g, '_'));
+    const resp = await fetch(`${WP_REST}/page/summary/${encoded}`, {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(4500)
     });
     if (!resp.ok) return null;
     const data = await resp.json();
-    // Prefer originalimage, fall back to thumbnail
     const url = data?.originalimage?.source || data?.thumbnail?.source;
     return url ? resizeWikimediaThumb(url, 800) : null;
   } catch {
@@ -51,15 +120,11 @@ async function fetchFromWikipediaSummary(placeName) {
 
 /**
  * Strategy 2: Wikipedia Action API page images search.
- * Handles alternate spellings & disambiguation better.
- *
- * @param {string} placeName
- * @returns {Promise<string|null>}
  */
-async function fetchFromWikipediaPageImages(placeName) {
+async function fetchFromWikipediaPageImages(query) {
   const params = new URLSearchParams({
     action: 'query',
-    titles: placeName,
+    titles: query,
     prop: 'pageimages',
     pithumbsize: 800,
     format: 'json',
@@ -67,7 +132,7 @@ async function fetchFromWikipediaPageImages(placeName) {
   });
   try {
     const resp = await fetch(`${WP_ACTION}?${params}`, {
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(4500)
     });
     if (!resp.ok) return null;
     const data = await resp.json();
@@ -81,33 +146,28 @@ async function fetchFromWikipediaPageImages(placeName) {
 }
 
 /**
- * Strategy 3: Wikimedia Commons direct file search.
- * Best for obscure locations not on Wikipedia.
- *
- * @param {string} placeName
- * @returns {Promise<string|null>}
+ * Strategy 3: Wikimedia Commons direct search.
  */
-async function fetchFromCommonsSearch(placeName) {
+async function fetchFromCommonsSearch(query) {
   const params = new URLSearchParams({
     action: 'query',
     list: 'search',
-    srsearch: `${placeName} filetype:bitmap`,
-    srnamespace: 6, // File namespace
-    srlimit: 5,
+    srsearch: `${query} filetype:bitmap`,
+    srnamespace: 6,
+    srlimit: 4,
     format: 'json',
     origin: '*'
   });
   try {
     const resp = await fetch(`${COMMONS_ACTION}?${params}`, {
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(4500)
     });
     if (!resp.ok) return null;
     const data = await resp.json();
     const results = data?.query?.search;
     if (!results?.length) return null;
 
-    // Get imageinfo for the first result
-    const title = results[0].title; // e.g. "File:Taj_Mahal_2.jpg"
+    const title = results[0].title;
     const infoParams = new URLSearchParams({
       action: 'query',
       titles: title,
@@ -118,7 +178,7 @@ async function fetchFromCommonsSearch(placeName) {
       origin: '*'
     });
     const infoResp = await fetch(`${COMMONS_ACTION}?${infoParams}`, {
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(4500)
     });
     if (!infoResp.ok) return null;
     const infoData = await infoResp.json();
@@ -134,35 +194,38 @@ async function fetchFromCommonsSearch(placeName) {
 
 /**
  * Main export: fetch the best available Wikimedia photo for a place.
- * Tries 3 strategies in sequence, returns first successful result.
- *
- * @param {string} placeName – Full place name (e.g. "Jantar Mantar Jaipur")
- * @param {string} [city] – Optional city hint to help disambiguation
- * @returns {Promise<string|null>} image URL or null
  */
 export async function fetchWikimediaPhoto(placeName, city = '') {
   if (!placeName?.trim()) return null;
 
-  // Build search queries: full name first, then name+city, then name alone
-  const queries = [
-    placeName,
-    city ? `${placeName}, ${city}` : null,
-    placeName.split(',')[0].trim() // drop city suffix if already in name
-  ].filter(Boolean).filter((q, i, arr) => arr.indexOf(q) === i);
+  // Check cache first
+  const cached = getCachedWikimediaPhoto(placeName, city);
+  if (cached) return cached;
 
-  for (const query of queries) {
-    // Strategy 1: Wikipedia REST summary
-    const summaryUrl = await fetchFromWikipediaSummary(query);
-    if (summaryUrl) return summaryUrl;
+  const queries = generateSearchVariants(placeName, city);
 
-    // Strategy 2: Wikipedia Action API page images
-    const pageImgUrl = await fetchFromWikipediaPageImages(query);
-    if (pageImgUrl) return pageImgUrl;
+  for (const q of queries) {
+    const summaryUrl = await fetchFromWikipediaSummary(q);
+    if (summaryUrl) {
+      setCachedWikimediaPhoto(placeName, city, summaryUrl);
+      return summaryUrl;
+    }
+
+    const pageImgUrl = await fetchFromWikipediaPageImages(q);
+    if (pageImgUrl) {
+      setCachedWikimediaPhoto(placeName, city, pageImgUrl);
+      return pageImgUrl;
+    }
   }
 
-  // Strategy 3: Commons search (last resort, any query)
-  const commonsUrl = await fetchFromCommonsSearch(placeName);
-  if (commonsUrl) return commonsUrl;
+  // Last resort Commons search
+  for (const q of queries.slice(0, 2)) {
+    const commonsUrl = await fetchFromCommonsSearch(q);
+    if (commonsUrl) {
+      setCachedWikimediaPhoto(placeName, city, commonsUrl);
+      return commonsUrl;
+    }
+  }
 
   return null;
 }

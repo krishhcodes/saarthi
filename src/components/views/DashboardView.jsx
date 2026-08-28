@@ -21,6 +21,7 @@ import {
   MessageSquare,
   MapPinCheck
 } from 'lucide-react';
+import MonumentImage from '../common/MonumentImage';
 
 export default function DashboardView() {
   const { 
@@ -241,8 +242,10 @@ export default function DashboardView() {
             >
               <div>
                 <div className="relative h-44 overflow-hidden">
-                  <img
-                    src={dest.image}
+                  <MonumentImage
+                    name={dest.name}
+                    city={dest.city}
+                    fallback={dest.image}
                     alt={dest.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />

@@ -28,6 +28,7 @@ import {
 import { fetchAttractionRecommendations } from '../../services/recommendationService';
 import { INDIA_STATES_AND_CITIES } from '../../data/indiaStatesData';
 import { resolveMainAccessibleEntrance } from '../../services/routeService';
+import MonumentImage from '../common/MonumentImage';
 
 export default function DestinationsView() {
   const { 
@@ -591,8 +592,10 @@ export default function DestinationsView() {
                       
                       {/* Left: Monument Image */}
                       <div className="relative w-full lg:w-72 h-48 sm:h-52 rounded-2xl overflow-hidden shrink-0 shadow-md">
-                        <img
-                          src={attraction.image}
+                        <MonumentImage
+                          name={attraction.name}
+                          city={attraction.city}
+                          fallback={attraction.image}
                           alt={attraction.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
