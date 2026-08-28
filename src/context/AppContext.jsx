@@ -29,7 +29,8 @@ import {
   doc, 
   updateDoc, 
   getDoc,
-  isFirebaseConfigured 
+  isFirebaseConfigured,
+  isAuthorizedAdmin
 } from '../config/firebase';
 import { seedFirestoreIfEmpty } from '../services/seedService';
 import { 
@@ -167,9 +168,12 @@ export function AppProvider({ children }) {
           const profileDoc = await getDoc(doc(db, 'userProfiles', user.uid));
           if (profileDoc.exists()) {
             const data = profileDoc.data();
-            setCurrentUser(data);
-            if (data.accessibilityProfile) {
-              setUserProfile(data.accessibilityProfile);
+            // Validate admin authorization against hardcoded allowlist
+            const safeRole = (data.role === 'admin' && !isAuthorizedAdmin(user.email)) ? 'tourist' : (data.role || 'tourist');
+            const safeData = { ...data, role: safeRole };
+            setCurrentUser(safeData);
+            if (safeData.accessibilityProfile) {
+              setUserProfile(safeData.accessibilityProfile);
             }
             if (data.role === 'guide') {
               try {

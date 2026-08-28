@@ -34,6 +34,17 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
+// Designated Authorized Ministry / System Administrator Email Allowlist
+export const AUTHORIZED_ADMIN_EMAILS = [
+  'vermasiddharth617@gmail.com',
+  'krishh21062003@gmail.com'
+];
+
+export const isAuthorizedAdmin = (email) => {
+  if (!email) return false;
+  return AUTHORIZED_ADMIN_EMAILS.includes(email.toLowerCase().trim());
+};
+
 export const isFirebaseConfigured = () => {
   return Boolean(
     firebaseConfig.apiKey && 

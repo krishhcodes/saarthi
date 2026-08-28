@@ -22,6 +22,9 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   updateProfile,
+  firebaseSignOut,
+  isAuthorizedAdmin,
+  AUTHORIZED_ADMIN_EMAILS,
   isFirebaseConfigured 
 } from '../../config/firebase';
 
@@ -50,6 +53,15 @@ export default function AuthView() {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
+      // Strict Admin Authorization Check
+      if (selectedRole === 'admin' && !isAuthorizedAdmin(user.email)) {
+        await firebaseSignOut(auth);
+        setErrorMsg(`Not Authorised: "${user.email}" is not an authorised Admin account. Only designated Ministry of Tourism / ASI administrator emails (vermasiddharth617@gmail.com, krishh21062003@gmail.com) have admin access.`);
+        addToast("Not Authorised: Admin role is restricted to verified administrators.", "error");
+        setLoading(false);
+        return;
+      }
+
       const accessibilityProfile = {
         primaryDisability: "Mobility / Wheelchair",
         secondaryNeeds: ["Step-Free Access", "Accessible Washroom"],
@@ -112,6 +124,13 @@ export default function AuthView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+
+    // Strict Admin Authorization Check for Email/Password
+    if (selectedRole === 'admin' && !isAuthorizedAdmin(email)) {
+      setErrorMsg(`Not Authorised: "${email || 'This account'}" is not an authorised Admin email. Only designated Ministry / ASI administrator email addresses (vermasiddharth617@gmail.com, krishh21062003@gmail.com) are permitted.`);
+      addToast("Not Authorised: Admin role is restricted to verified administrators.", "error");
+      return;
+    }
 
     if (!isFirebaseConfigured()) {
       // Fallback demo mode
@@ -382,6 +401,15 @@ export default function AuthView() {
                 <span>Admin / Gov</span>
               </button>
             </div>
+
+            {selectedRole === 'admin' && (
+              <div className="mt-2.5 p-2.5 bg-amber-50/80 border border-amber-200 rounded-xl text-[11px] text-amber-900 flex items-start gap-2 animate-in fade-in">
+                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Restricted Role:</span> Only pre-authorized Ministry of Tourism & ASI administrator accounts are permitted. Unlisted emails will show an unauthorized error.
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Google Sign-In Quick Action */}
