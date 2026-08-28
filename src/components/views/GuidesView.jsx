@@ -13,8 +13,64 @@ import {
   PhoneCall, 
   X, 
   Sparkles,
-  HeartHandshake
+  HeartHandshake,
+  MapPin,
+  Compass
 } from 'lucide-react';
+
+// Indian Heritage Hubs & City Coordinate Registry
+const AREA_COORDINATES = {
+  'Agra': { lat: 27.1767, lng: 78.0081, label: 'Agra (UP)' },
+  'Delhi': { lat: 28.6139, lng: 77.2090, label: 'Delhi / NCR' },
+  'Jaipur': { lat: 26.9124, lng: 75.7873, label: 'Jaipur (Rajasthan)' },
+  'Varanasi': { lat: 25.3176, lng: 82.9739, label: 'Varanasi (UP)' },
+  'Mumbai': { lat: 19.0760, lng: 72.8777, label: 'Mumbai (Maharashtra)' },
+  'Kochi': { lat: 9.9312, lng: 76.2673, label: 'Kochi (Kerala)' },
+  'Goa': { lat: 15.2993, lng: 74.1240, label: 'Goa' },
+  'Amritsar': { lat: 31.6340, lng: 74.8723, label: 'Amritsar (Punjab)' },
+  'Udaipur': { lat: 24.5854, lng: 73.7125, label: 'Udaipur (Rajasthan)' },
+  'Bengaluru': { lat: 12.9716, lng: 77.5946, label: 'Bengaluru (Karnataka)' },
+  'Hyderabad': { lat: 17.3850, lng: 78.4867, label: 'Hyderabad (Telangana)' },
+  'Chennai': { lat: 13.0827, lng: 80.2707, label: 'Chennai (Tamil Nadu)' },
+  'Kolkata': { lat: 22.5726, lng: 88.3639, label: 'Kolkata (West Bengal)' },
+  'Mathura': { lat: 27.4924, lng: 77.6737, label: 'Mathura / Vrindavan' },
+  'Noida': { lat: 28.5355, lng: 77.3910, label: 'Noida / NCR' },
+  'Gurgaon': { lat: 28.4595, lng: 77.0266, label: 'Gurgaon / Gurugram' },
+  'Pune': { lat: 18.5204, lng: 73.8567, label: 'Pune (Maharashtra)' },
+  'Ahmedabad': { lat: 23.0225, lng: 72.5714, label: 'Ahmedabad (Gujarat)' },
+  'Chandigarh': { lat: 30.7333, lng: 76.7794, label: 'Chandigarh' },
+  'Lucknow': { lat: 26.8467, lng: 80.9462, label: 'Lucknow (UP)' },
+  'Hampi': { lat: 15.3350, lng: 76.4600, label: 'Hampi (Karnataka)' },
+  'Aurangabad': { lat: 19.8762, lng: 75.3433, label: 'Aurangabad / Ellora' },
+  'Puri': { lat: 19.8135, lng: 85.8312, label: 'Puri / Konark' },
+  'Khajuraho': { lat: 24.8318, lng: 79.9199, label: 'Khajuraho (MP)' },
+  'Bhopal': { lat: 23.2599, lng: 77.4126, label: 'Bhopal / Sanchi' },
+  'Mysuru': { lat: 12.2958, lng: 76.6394, label: 'Mysuru (Karnataka)' }
+};
+
+// Haversine Great-Circle Distance (km)
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
+function getGuideCoordinates(guide) {
+  if (guide.lat && guide.lng) return { lat: guide.lat, lng: guide.lng };
+  const cityStr = (guide.city || '').toLowerCase();
+  for (const [key, coords] of Object.entries(AREA_COORDINATES)) {
+    if (cityStr.includes(key.toLowerCase())) {
+      return coords;
+    }
+  }
+  return null;
+}
 
 export default function GuidesView() {
   const { 
@@ -26,6 +82,7 @@ export default function GuidesView() {
     addToast 
   } = useApp();
 
+  const [selectedArea, setSelectedArea] = useState('All');
   const [selectedSpecialization, setSelectedSpecialization] = useState('All');
   const [selectedLanguage, setSelectedLanguage] = useState('All');
   const [activeBookingGuide, setActiveBookingGuide] = useState(null);
@@ -45,16 +102,48 @@ export default function GuidesView() {
     'Cognitive Accessibility'
   ];
 
+  const getGuideDistanceToSelectedArea = (guide, areaKey) => {
+    if (areaKey === 'All') return null;
+    const targetCoords = AREA_COORDINATES[areaKey];
+    if (!targetCoords) return null;
+
+    const cityStr = (guide.city || '').toLowerCase();
+    if (cityStr.includes(areaKey.toLowerCase())) {
+      return 0; // Same area
+    }
+
+    const guideCoords = getGuideCoordinates(guide);
+    if (!guideCoords) return 9999;
+
+    return calculateDistanceKm(targetCoords.lat, targetCoords.lng, guideCoords.lat, guideCoords.lng);
+  };
+
   const filteredGuides = guides.filter(g => {
-    // Only show verified guides in the tourist booking catalog
-    if (!g.isVerified) return false;
-    if (selectedSpecialization !== 'All' && !g.specializations.some(s => s.includes(selectedSpecialization))) {
+    // Only show verified guides (or currently logged in guide viewing self)
+    if (!g.isVerified && g.id !== currentUser?.id) return false;
+
+    if (selectedSpecialization !== 'All' && !g.specializations?.some(s => s.toLowerCase().includes(selectedSpecialization.toLowerCase()))) {
       return false;
     }
-    if (selectedLanguage !== 'All' && !g.languages.includes(selectedLanguage)) {
+    if (selectedLanguage !== 'All' && !g.languages?.includes(selectedLanguage)) {
       return false;
+    }
+    if (selectedArea !== 'All') {
+      const dist = getGuideDistanceToSelectedArea(g, selectedArea);
+      if (dist === null || dist > 100) {
+        return false; // Beyond 100 km radius
+      }
     }
     return true;
+  });
+
+  // Sort so newly created / Firestore guides made by users/friends appear at the TOP!
+  const sortedGuides = [...filteredGuides].sort((a, b) => {
+    const aIsHardcoded = a.id === 'guide-1' || a.id === 'guide-2';
+    const bIsHardcoded = b.id === 'guide-1' || b.id === 'guide-2';
+    if (!aIsHardcoded && bIsHardcoded) return -1;
+    if (aIsHardcoded && !bIsHardcoded) return 1;
+    return 0;
   });
 
   const handleConfirmBooking = (e) => {
@@ -98,9 +187,27 @@ export default function GuidesView() {
         </p>
       </div>
 
-      {/* Filter Bar */}
+      {/* Filter Bar with Area Selector (100km Radius) */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
+          
+          {/* Area / City Selector */}
+          <div className="relative">
+            <select
+              value={selectedArea}
+              onChange={(e) => setSelectedArea(e.target.value)}
+              className="py-2.5 pl-3 pr-8 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-saarthi-500 focus:outline-none"
+            >
+              <option value="All">📍 All Areas (All India)</option>
+              {Object.entries(AREA_COORDINATES).map(([key, info]) => (
+                <option key={key} value={key}>
+                  📍 {info.label} (100km Radius)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Specialization Selector */}
           <select
             value={selectedSpecialization}
             onChange={(e) => setSelectedSpecialization(e.target.value)}
@@ -113,6 +220,7 @@ export default function GuidesView() {
             ))}
           </select>
 
+          {/* Language Selector */}
           <select
             value={selectedLanguage}
             onChange={(e) => setSelectedLanguage(e.target.value)}
@@ -125,18 +233,32 @@ export default function GuidesView() {
             <option value="Tamil">Tamil</option>
             <option value="Marathi">Marathi</option>
             <option value="Kannada">Kannada</option>
+            <option value="Telugu">Telugu</option>
+            <option value="Bengali">Bengali</option>
+            <option value="Gujarati">Gujarati</option>
           </select>
         </div>
 
-        <span className="text-xs text-slate-500 font-medium">
-          Showing {filteredGuides.length} Verified Disability Guides
-        </span>
+        <div className="flex items-center gap-2">
+          {selectedArea !== 'All' && (
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1">
+              <Compass className="w-3 h-3" />
+              <span>≤100 km of {selectedArea}</span>
+            </span>
+          )}
+          <span className="text-xs text-slate-500 font-medium">
+            Showing {sortedGuides.length} Verified Guides
+          </span>
+        </div>
       </div>
 
       {/* Guides Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredGuides.map((guide) => {
+        {sortedGuides.map((guide) => {
           const isSelectedInTrip = currentTrip.guide?.id === guide.id;
+          const isUserRegistered = guide.id !== 'guide-1' && guide.id !== 'guide-2';
+          const distanceToSelected = selectedArea !== 'All' ? getGuideDistanceToSelectedArea(guide, selectedArea) : null;
+
           return (
             <div
               key={guide.id}
@@ -147,35 +269,50 @@ export default function GuidesView() {
               <div>
                 <div className="flex items-start gap-4">
                   <img
-                    src={guide.avatar}
+                    src={guide.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80"}
                     alt={guide.name}
                     className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-slate-200 shadow-md shrink-0"
                   />
                   <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <h3 className="font-extrabold text-base sm:text-lg text-slate-900">{guide.name}</h3>
-                      {guide.isVerified ? (
-                        <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-300">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>{guide.verificationBadge}</span>
-                        </span>
-                      ) : (
-                        <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                          Pending Audit
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {isUserRegistered && (
+                          <span className="bg-purple-100 text-purple-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-purple-300">
+                            🌟 Community Member
+                          </span>
+                        )}
+                        {guide.isVerified ? (
+                          <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-300">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{guide.verificationBadge || "Verified Sugamya Specialist"}</span>
+                          </span>
+                        ) : (
+                          <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            Pending Audit
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500 font-medium">
+                      <span>{guide.city} • {guide.experienceYears || 1} Years Exp.</span>
+                      {distanceToSelected !== null && (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          📍 {distanceToSelected === 0 ? `In ${selectedArea}` : `${distanceToSelected} km from ${selectedArea}`}
                         </span>
                       )}
                     </div>
 
-                    <p className="text-xs text-slate-500 font-medium">{guide.city} • {guide.experienceYears} Years Exp.</p>
                     <p className="text-xs text-slate-700 flex items-center gap-1">
                       <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                      <strong>★ {guide.rating}</strong> ({guide.reviewsCount} verified reviews)
+                      <strong>★ {guide.rating || "4.9"}</strong> ({guide.reviewsCount || 10} verified reviews)
                     </p>
 
                     <div className="pt-1 flex items-center justify-between">
-                      <span className="text-sm font-black text-slate-900">{guide.hourlyRate}</span>
+                      <span className="text-sm font-black text-slate-900">{guide.hourlyRate || "₹450 / hr"}</span>
                       <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                        {guide.availability}
+                        {guide.availability || "Available Today"}
                       </span>
                     </div>
                   </div>

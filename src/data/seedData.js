@@ -740,6 +740,8 @@ export const INITIAL_GUIDES = [
     name: "Vikram Singh",
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
     city: "Agra / Delhi",
+    lat: 27.1767,
+    lng: 78.0081,
     languages: ["English", "Hindi", "Indian Sign Language (ISL)"],
     specializations: ["Wheelchair Assistance", "Sign Language", "Accessible Route Navigation"],
     certifications: [
@@ -763,6 +765,8 @@ export const INITIAL_GUIDES = [
     name: "Priya Sundaram",
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80",
     city: "Delhi / Jaipur",
+    lat: 28.6139,
+    lng: 77.2090,
     languages: ["English", "Hindi", "Tamil", "ISL"],
     specializations: ["Visual Assistance", "Audio Descriptive Tours", "Tactile Heritage Guiding"],
     certifications: [
@@ -780,143 +784,6 @@ export const INITIAL_GUIDES = [
     bio: "Specializes in vivid verbal descriptions, sensory tactile tours of Mughal architecture, and guided assistance for visually impaired travelers.",
     phone: "+91-98109-12345",
     availability: "Available Tomorrow"
-  },
-  {
-    id: "guide-3",
-    name: "Dr. Rajeshwar Nair",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80",
-    city: "Kochi / Kerala",
-    languages: ["English", "Malayalam", "Hindi", "German"],
-    specializations: ["Senior Assistance", "Wheelchair Mobility", "Cognitive / Neurodivergent Calm Tours"],
-    certifications: [
-      "Kerala Tourism Dept Certified Accessible Guide",
-      "Dementia & Autism Friendly Travel Certification",
-      "CPR & AED Emergency Responder"
-    ],
-    experienceYears: 11,
-    rating: 4.90,
-    reviewsCount: 210,
-    hourlyRate: "₹600 / hr",
-    dayRate: "₹3,800 / day",
-    isVerified: true,
-    verificationBadge: "Senior Care Certified",
-    bio: "Former physiotherapist turned heritage travel guide. Designs calm, sensory-friendly pace itineraries around Kochi Backwaters and spice markets.",
-    phone: "+91-94470-88776",
-    availability: "Available Today"
-  },
-  {
-    id: "guide-4",
-    name: "Ananya Deshmukh",
-    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80",
-    city: "Mumbai / Goa",
-    languages: ["English", "Marathi", "Hindi", "French"],
-    specializations: ["Sign Language", "Hearing Impairment Support", "Beach Mobility Escort"],
-    certifications: [
-      "Deaf Can Foundation ISL Level 4 Interpreter",
-      "Maharashtra Tourism Development Corp (MTDC) Verified",
-      "Amphibious Wheelchair Operator Certified"
-    ],
-    experienceYears: 6,
-    rating: 4.88,
-    reviewsCount: 95,
-    hourlyRate: "₹450 / hr",
-    dayRate: "₹2,700 / day",
-    isVerified: true,
-    verificationBadge: "Certified ISL Interpreter",
-    bio: "Fluent in Indian Sign Language (ISL) and American Sign Language (ASL). Expert in beach mobility, boardwalk trails, and museum sign tours.",
-    phone: "+91-98201-99882",
-    availability: "Available Today"
-  },
-  {
-    id: "guide-5",
-    name: "Karan Johal",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80",
-    city: "Jaipur / Udaipur",
-    languages: ["English", "Hindi", "Punjabi", "Gujarati"],
-    specializations: ["Wheelchair Assistance", "Accessible Transport Coordination", "Step-Free Route Specialist"],
-    certifications: [
-      "Rajasthan Heritage Guide License",
-      "Sugamya Bharat Transportation Escort",
-      "Safe Transfer & Lifting Certified"
-    ],
-    experienceYears: 4,
-    rating: 4.82,
-    reviewsCount: 78,
-    hourlyRate: "₹400 / hr",
-    dayRate: "₹2,500 / day",
-    isVerified: true,
-    verificationBadge: "Verified Sugamya Specialist",
-    bio: "Equipped with a hydraulic lift accessible van for royal fort transfers and specialized in navigating Rajasthan's palace cobblestones.",
-    phone: "+91-99280-33441",
-    availability: "Available Today"
-  },
-  {
-    id: "guide-6",
-    name: "Meera Krishnan",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80",
-    city: "Bengaluru / Hyderabad",
-    languages: ["English", "Kannada", "Telugu", "Hindi"],
-    specializations: ["Cognitive Accessibility", "Visual Assistance", "Accessible Tech & App Support"],
-    certifications: [
-      "Karnataka Dept of Tourism Licensed",
-      "Assistive Tech in Travel Certified",
-      "Sensory Comfort Guide"
-    ],
-    experienceYears: 5,
-    rating: 4.92,
-    reviewsCount: 114,
-    hourlyRate: "₹500 / hr",
-    dayRate: "₹3,000 / day",
-    isVerified: true,
-    verificationBadge: "Tech & Sensory Specialist",
-    bio: "Integrates smart beacons, audio glasses, and sensory quiet zones during garden and science museum tours in South India.",
-    phone: "+91-97400-55667",
-    availability: "Available This Weekend"
-  },
-  {
-    id: "guide-7",
-    name: "Siddharth Verma",
-    avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=300&q=80",
-    city: "Varanasi",
-    languages: ["English", "Hindi", "Bhojpuri", "Sanskrit"],
-    specializations: ["Spiritual Heritage for PwD", "Wheelchair Ghat Navigation", "Senior Citizen Escort"],
-    certifications: [
-      "UP Tourism Certified Guide",
-      "Kashi Corridor Accessibility Volunteer Leader",
-      "St. John Ambulance First Aid"
-    ],
-    experienceYears: 8,
-    rating: 4.89,
-    reviewsCount: 185,
-    hourlyRate: "₹450 / hr",
-    dayRate: "₹2,800 / day",
-    isVerified: true,
-    verificationBadge: "Ghats & Corridor Expert",
-    bio: "Coordinates accessible boat boarding, hydraulic chair transfers, and reserved barrier-free spots for the evening Ganga Aarti.",
-    phone: "+91-94500-11223",
-    availability: "Available Today"
-  },
-  {
-    id: "guide-8",
-    name: "Farhan Qureshi",
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=300&q=80",
-    city: "Delhi / Agra",
-    languages: ["English", "Hindi", "Urdu", "Spanish"],
-    specializations: ["Multiple Accessibility Needs", "Wheelchair Escort", "Sign Language Basics"],
-    certifications: [
-      "ASI Licensed Guide",
-      "Red Cross Medical Responder"
-    ],
-    experienceYears: 3,
-    rating: 4.75,
-    reviewsCount: 42,
-    hourlyRate: "₹350 / hr",
-    dayRate: "₹2,200 / day",
-    isVerified: false,
-    verificationBadge: "Verification in Progress",
-    bio: "Enthusiastic young guide completing advanced disability sensitivity accreditation. Great stamina for long museum days.",
-    phone: "+91-98110-66778",
-    availability: "Available Today"
   }
 ];
 
