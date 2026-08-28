@@ -62,7 +62,7 @@ export default function ScreenReaderNarrator() {
         textToRead = "Government Support and Schemes. Access Sugamya Bharat Abhiyan, UDID Card benefits, Divyangjan concessions, and accessible travel subsidies.";
         break;
       case 'community-map':
-        textToRead = "Community Accessibility Map. Live crowdsourced reports on ramp conditions, elevator status, tactile pavements, and temporary blockages.";
+        textToRead = "Community Ground Reports. Live crowdsourced reports on ramp conditions, elevator status, tactile pavements, and temporary blockages.";
         break;
       default:
         // Try getting the main heading from the DOM

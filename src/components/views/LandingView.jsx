@@ -56,12 +56,12 @@ export default function LandingView() {
     },
     {
       id: 'community-map',
-      icon: Map,
-      title: "Live Community Map",
-      desc: "Interactive map with live ground reports, ramp updates, and obstacle alerts shared and voted on by fellow travelers.",
-      badge: "Live Traveler Updates",
+      icon: ShieldCheck,
+      title: "Community Ground Reports",
+      desc: "Live ground reports, ramp updates, and obstacle alerts shared and voted on by fellow travelers with auto GPS location tag.",
+      badge: "Auto GPS Verified",
       color: "bg-teal-50 text-teal-800 border-teal-200 hover:border-teal-400",
-      cta: "Open Community Map"
+      cta: "View Ground Reports"
     },
     {
       id: 'ai-verify',

@@ -76,7 +76,7 @@ export default function Header() {
     { id: 'guides', label: 'Guides', icon: Users }
   ];
   const touristSecondaryNav = [
-    { id: 'community-map', label: 'Community Map', icon: Map, desc: 'Crowdsourced obstacle & ramp reports' },
+    { id: 'community-map', label: 'Ground Reports', icon: ShieldCheck, desc: 'Crowdsourced obstacle & ramp reports' },
     { id: 'ai-verify', label: 'AI Vision Scanner', icon: Sparkles, desc: 'Gemini visual ramp verification' },
     { id: 'gov-services', label: 'Gov Schemes & UDID', icon: Building2, desc: 'Sugamya Bharat, IRCTC concessions' }
   ];
@@ -84,7 +84,7 @@ export default function Header() {
   // ── Guide Navigation ────────────────────────────────────────────────────
   const guidePrimaryNav = isVerifiedGuide ? [
     { id: 'guide-dashboard', label: 'Guide Dashboard', icon: Compass },
-    { id: 'community-map', label: 'Community Map', icon: Map },
+    { id: 'community-map', label: 'Ground Reports', icon: ShieldCheck },
   ] : [
     { id: 'guide-dashboard', label: 'Guide Portal', icon: ShieldCheck }
   ];
@@ -96,7 +96,7 @@ export default function Header() {
   // ── Admin Navigation ────────────────────────────────────────────────────
   const adminPrimaryNav = [
     { id: 'admin-dashboard', label: 'Admin Portal', icon: ShieldCheck },
-    { id: 'community-map', label: 'Audit Map', icon: Map },
+    { id: 'community-map', label: 'Ground Reports', icon: ShieldCheck },
     { id: 'destinations', label: 'Attractions', icon: MapPin },
   ];
   const adminSecondaryNav = [

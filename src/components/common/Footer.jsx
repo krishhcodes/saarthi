@@ -54,7 +54,7 @@ export default function Footer() {
               </li>
               <li>
                 <button onClick={() => navigateTo('community-map')} className="hover:text-saarthi-400 transition-colors">
-                  Community Accessibility Map
+                  Community Ground Reports
                 </button>
               </li>
               <li>

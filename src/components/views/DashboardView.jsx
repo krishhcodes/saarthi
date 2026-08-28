@@ -56,7 +56,7 @@ export default function DashboardView() {
     { label: "Attractions", icon: MapPin, view: 'destinations', color: "bg-blue-600 text-white" },
     { label: "Book Guide", icon: Users, view: 'guides', color: "bg-purple-600 text-white" },
     { label: "AI Vision Scan", icon: Sparkles, view: 'ai-verify', color: "bg-rose-600 text-white" },
-    { label: "Community Map", icon: Map, view: 'community-map', color: "bg-teal-600 text-white" },
+    { label: "Ground Reports", icon: ShieldCheck, view: 'community-map', color: "bg-teal-600 text-white" },
     { label: "Gov Schemes", icon: Building2, view: 'gov-services', color: "bg-amber-600 text-white" },
     { label: "Audio Guide", icon: Volume2, view: 'multilingual', color: "bg-slate-900 text-white" }
   ];

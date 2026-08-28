@@ -304,7 +304,7 @@ export default function DestinationDetailView() {
                 onClick={() => navigateTo('community-map')}
                 className="text-xs font-bold text-saarthi-600 hover:underline"
               >
-                View on Map →
+                View All Reports →
               </button>
             </div>
 

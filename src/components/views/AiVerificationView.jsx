@@ -278,7 +278,7 @@ export default function AiVerificationView() {
             onClick={handleAddToCommunityMap}
             className="w-full py-3.5 bg-gradient-to-r from-saarthi-600 to-sky-600 hover:from-saarthi-700 hover:to-sky-700 text-white rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95"
           >
-            <span>Publish AI Verified Finding to Community Map</span>
+            <span>Publish Finding to Community Ground Reports</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
