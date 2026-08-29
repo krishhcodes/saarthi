@@ -7,6 +7,9 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 // Active models in priority order
 const WORKING_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
   'gemini-3.1-flash-lite',
   'gemini-flash-lite-latest',
   'gemini-3.5-flash'

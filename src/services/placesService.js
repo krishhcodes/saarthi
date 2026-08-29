@@ -5,8 +5,14 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PLACES_CATALOG, DISABILITY_KEY, STATUS_THRESHOLDS } from '../data/placesData';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-const WORKING_MODELS = ['gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
+const WORKING_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash'
+];
 
 let genAI = null;
 if (GEMINI_API_KEY && !GEMINI_API_KEY.includes('your_')) {

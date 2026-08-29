@@ -3,14 +3,16 @@
 // Maps granular infrastructure: Entrances, Toilets, Transport, Paths, and Sensory Services
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { fetchWikimediaPhoto } from './wikimediaService';
+import { fetchWikimediaPhoto } from './wikimediaService.js';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const WORKING_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
   'gemini-3.1-flash-lite',
   'gemini-flash-lite-latest',
-  'gemini-3.5-flash',
-  'gemini-2.5-flash'
+  'gemini-3.5-flash'
 ];
 
 let genAI = null;
@@ -24,6 +26,7 @@ if (GEMINI_API_KEY && !GEMINI_API_KEY.includes('your_')) {
 
 // In-Memory Session Cache to avoid redundant API queries
 const recommendationsCache = new Map();
+const imageCache = new Map();
 
 // Category-based fallback images if Wikipedia has no photo
 const CATEGORY_IMAGES = {
@@ -35,6 +38,8 @@ const CATEGORY_IMAGES = {
   palace: 'https://images.unsplash.com/photo-1600100397608-f010f443b71f?auto=format&fit=crop&w=800&q=80',
   museum: 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?auto=format&fit=crop&w=800&q=80',
   heritage: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=800&q=80',
+  waterfall: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=800&q=80',
+  falls: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=800&q=80',
   default: 'https://images.unsplash.com/photo-1532375810709-75b1da00537c?auto=format&fit=crop&w=800&q=80'
 };
 
@@ -42,15 +47,23 @@ const CATEGORY_IMAGES = {
  * Fetch authentic photo of the attraction from Wikipedia / Wikimedia Commons API
  */
 async function fetchRealAttractionImage(name, city, category = '') {
+  const cacheKey = `${name}_${city}`.toLowerCase().trim();
+  if (imageCache.has(cacheKey)) {
+    return imageCache.get(cacheKey);
+  }
+
   try {
     const wikiPhoto = await fetchWikimediaPhoto(name, city);
-    if (wikiPhoto) return wikiPhoto;
+    if (wikiPhoto) {
+      imageCache.set(cacheKey, wikiPhoto);
+      return wikiPhoto;
+    }
   } catch (e) {
     // proceed to category fallback
   }
 
-  // 3. Fallback to appropriate category theme photo
-  const catKey = (category || name).toLowerCase();
+  // Fallback to appropriate category theme photo
+  const catKey = `${category} ${name}`.toLowerCase();
   for (const [key, url] of Object.entries(CATEGORY_IMAGES)) {
     if (catKey.includes(key)) {
       imageCache.set(cacheKey, url);
